@@ -1,0 +1,15 @@
+name: Poll tracked repos
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 minutes
+  workflow_dispatch: {} # allows manual triggering from the Actions tab
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call poll endpoint
+        run: |
+          curl -sf -X POST "${{ secrets.APP_URL }}/api/poll" \
+            -H "Authorization: Bearer ${{ secrets.POLL_SECRET }}"

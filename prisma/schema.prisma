@@ -1,0 +1,60 @@
+// Defaults to SQLite so the app runs with zero external services.
+// To use Postgres instead (recommended for multi-user / cloud deploys):
+//   1. Set provider = "postgresql" below
+//   2. Set DATABASE_URL in .env to your Postgres connection string
+//   3. Run `npm run db:push`
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  githubId     String   @unique
+  githubLogin  String
+  accessToken  String // encrypted GitHub OAuth token, used for API calls on their behalf
+  createdAt    DateTime @default(now())
+
+  repos         TrackedRepo[]
+  notifications Notification[]
+}
+
+model TrackedRepo {
+  id                 String    @id @default(cuid())
+  owner              String
+  name               String
+  addedAt            DateTime  @default(now())
+  lastPolledAt       DateTime?
+  lastSeenIssueNumber Int      @default(0)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  notifications Notification[]
+
+  @@unique([userId, owner, name])
+}
+
+model Notification {
+  id                String   @id @default(cuid())
+  issueNumber       Int
+  issueUrl          String
+  title             String
+  authorLogin       String
+  authorAssociation String // OWNER | MEMBER | COLLABORATOR | CONTRIBUTOR
+  createdAt         DateTime @default(now())
+  read              Boolean  @default(false)
+
+  repoId String
+  repo   TrackedRepo @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([repoId, issueNumber])
+}
