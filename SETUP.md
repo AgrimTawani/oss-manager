@@ -37,21 +37,45 @@ npm run poll
 
 ## 4. Deploy to Vercel
 
-```powershell
-npx vercel
+Project linked: **agrimtawanis-projects/oss-manager**
+
+Production URL (once env vars are set and build succeeds):
+
+```
+https://oss-manager-agrimtawanis-projects.vercel.app
 ```
 
-Set production env vars in the Vercel dashboard (Neon **main** branch URLs, prod `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `POLL_SECRET`).
+Add these in the [Vercel dashboard](https://vercel.com/agrimtawanis-projects/oss-manager/settings/environment-variables):
 
-Add production OAuth callback: `https://<your-app>.vercel.app/api/auth/callback/github`
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | Neon **main** branch pooled URL |
+| `DATABASE_URL_UNPOOLED` | Neon **main** branch direct URL |
+| `GITHUB_CLIENT_ID` | Your OAuth app |
+| `GITHUB_CLIENT_SECRET` | Your OAuth app |
+| `NEXTAUTH_SECRET` | New random secret for prod |
+| `NEXTAUTH_URL` | `https://oss-manager-agrimtawanis-projects.vercel.app` |
+| `POLL_SECRET` | Must match GitHub Actions secret (already set) |
+
+Redeploy after adding env vars:
+
+```powershell
+npx vercel --prod
+```
 
 ## 5. GitHub Actions secrets
 
-In https://github.com/AgrimTawani/oss-manager/settings/secrets/actions:
+Already configured on the repo:
 
 | Secret | Value |
 |--------|-------|
-| `APP_URL` | Your Vercel URL |
-| `POLL_SECRET` | Same as Vercel |
+| `APP_URL` | `https://oss-manager-agrimtawanis-projects.vercel.app` |
+| `POLL_SECRET` | Set (must match Vercel `POLL_SECRET`) |
+
+Settings: https://github.com/AgrimTawani/oss-manager/settings/secrets/actions
+
+Add production OAuth callback:
+
+`https://oss-manager-agrimtawanis-projects.vercel.app/api/auth/callback/github`
 
 Then run the **Poll tracked repos** workflow manually once to verify.
