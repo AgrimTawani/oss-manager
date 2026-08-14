@@ -13,69 +13,114 @@ issue — never random drive-by issues from strangers.
   `COLLABORATOR`, or `CONTRIBUTOR` turn into a notification in your feed.
   Everyone else's issues are silently ignored.
 
+## Stack
+
+Next.js (App Router) · Prisma · Neon Postgres · NextAuth (GitHub OAuth) · Tailwind CSS · Vercel
+
 ## Quick start (local)
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/AgrimTawani/oss-manager
 cd oss-contrib-manager
 npm install
 cp .env.example .env
 ```
 
-1. Create a GitHub OAuth App at https://github.com/settings/developers
-   - Homepage URL: `http://localhost:3000`
-   - Callback URL: `http://localhost:3000/api/auth/callback/github`
-   - Copy the client ID and secret into `.env`
-2. Generate two secrets and add them to `.env`:
-   ```bash
-   openssl rand -base64 32   # -> NEXTAUTH_SECRET
-   openssl rand -base64 32   # -> POLL_SECRET
-   ```
-3. Create the database and run the app:
-   ```bash
-   npm run db:push
-   npm run dev
-   ```
-4. Open http://localhost:3000 and sign in with GitHub.
+### 1. Neon database
 
-## Keeping it polling
+1. Create a project at [neon.tech](https://neon.tech) (free tier).
+2. Create a **dev** branch for local development; keep **main** for production.
+3. Copy connection strings into `.env`:
+   - `DATABASE_URL` — **pooled** URL (hostname includes `-pooler`)
+   - `DATABASE_URL_UNPOOLED` — **direct** URL (no `-pooler`, for migrations)
 
-The feed only updates when something actually polls GitHub. Pick one:
+Or run the Neon CLI wizard:
 
-**Option A — GitHub Actions (recommended for deployed instances)**
-The included workflow at `.github/workflows/poll.yml` calls your app's
-`/api/poll` endpoint every 15 minutes. After deploying, add two repo secrets
-in your fork's GitHub settings:
-- `APP_URL` — your deployed URL (e.g. `https://your-app.vercel.app`)
-- `POLL_SECRET` — the same value as in your `.env`
-
-**Option B — your own cron**
-Run `npm run poll` on any schedule (crontab, systemd timer, etc.) on a machine
-that has access to the same database and `.env`.
-
-**Option C — a hosted cron pinger**
-Point any scheduled-HTTP service (cron-job.org, EasyCron, Vercel Cron) at:
-```
-POST https://your-app-url/api/poll
-Authorization: Bearer <POLL_SECRET>
+```bash
+npx neon@latest init
 ```
 
-## Deploying
+Apply migrations to your dev branch:
 
-This is a standard Next.js + Prisma app — it deploys to Vercel, Railway,
-Fly.io, or any Node host. For multi-user or production use, switch the
-database from SQLite to Postgres:
+```bash
+npx prisma migrate dev
+```
 
-1. In `prisma/schema.prisma`, change `provider = "sqlite"` to `provider = "postgresql"`
-2. Set `DATABASE_URL` to your Postgres connection string
-3. Run `npm run db:push`
+### 2. GitHub OAuth
 
-Remember to update your GitHub OAuth App's callback URL and `NEXTAUTH_URL`
-to match your deployed domain.
+Create an OAuth App at https://github.com/settings/developers
 
-## Tech stack
+| Field | Local value |
+|-------|-------------|
+| Homepage URL | `http://localhost:3000` |
+| Callback URL | `http://localhost:3000/api/auth/callback/github` |
 
-Next.js (App Router) · Prisma · NextAuth (GitHub OAuth) · Tailwind CSS
+Add `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to `.env`.
+
+Generate secrets:
+
+```powershell
+# PowerShell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+Set `NEXTAUTH_SECRET` and `POLL_SECRET` in `.env`.
+
+### 3. Run
+
+```bash
+npm run dev
+```
+
+Open http://localhost:3000, sign in with GitHub, add a repo, then:
+
+```bash
+npm run poll
+```
+
+## Environment variables
+
+| Variable | Local | Vercel (production) |
+|----------|-------|---------------------|
+| `DATABASE_URL` | Neon dev branch (pooled) | Neon main branch (pooled) |
+| `DATABASE_URL_UNPOOLED` | Neon dev branch (direct) | Neon main branch (direct) |
+| `GITHUB_CLIENT_ID` | OAuth app | Same |
+| `GITHUB_CLIENT_SECRET` | OAuth app | Same |
+| `NEXTAUTH_SECRET` | Random | New random (prod) |
+| `NEXTAUTH_URL` | `http://localhost:3000` | `https://your-app.vercel.app` |
+| `POLL_SECRET` | Random | New random (prod) |
+
+See [`.env.example`](.env.example) for the full template.
+
+## Deploy to Vercel
+
+1. Import the GitHub repo in [Vercel](https://vercel.com).
+2. Set all production env vars (Neon **main** branch URLs).
+3. Add production OAuth callback: `https://your-app.vercel.app/api/auth/callback/github`
+4. Deploy — build runs `prisma migrate deploy` automatically.
+
+### GitHub Actions polling (production)
+
+Add repo secrets under **Settings → Secrets → Actions**:
+
+| Secret | Value |
+|--------|-------|
+| `APP_URL` | `https://your-app.vercel.app` |
+| `POLL_SECRET` | Same as Vercel |
+
+The workflow at [`.github/workflows/poll.yml`](.github/workflows/poll.yml) calls `/api/poll` every 15 minutes.
+
+Manual poll (local or prod):
+
+```bash
+curl -X POST http://localhost:3000/api/poll -H "Authorization: Bearer YOUR_POLL_SECRET"
+```
+
+## Health check
+
+```
+GET /api/health
+```
 
 ## Project structure
 
@@ -86,21 +131,22 @@ app/
     repos/               # add/list/remove tracked repos
     notifications/       # read the feed, mark as read
     poll/                # triggers a poll run (called by cron/Actions)
+    health/              # liveness check
   page.tsx               # the dashboard UI
 lib/
-  github.ts               # GitHub API calls + the maintainer/contributor filter
-  poll.ts                 # core polling logic
-  auth.ts                 # NextAuth config
+  github.ts              # GitHub API + maintainer filter
+  poll.ts                # core polling logic
+  auth.ts                # NextAuth config
 scripts/
-  poll.ts                 # run a poll from a plain cron job, no HTTP needed
+  poll.ts                # run a poll from cron without HTTP
+.agents/skills/          # Cursor agent skills (Neon, Vercel)
 ```
 
 ## Adjusting the filter
 
-To change which associations count as "official", edit `MAINTAINER_ASSOCIATIONS`
-in `lib/github.ts`. Full list of possible values: `OWNER`, `MEMBER`,
+Edit `MAINTAINER_ASSOCIATIONS` in `lib/github.ts`. Possible values: `OWNER`, `MEMBER`,
 `COLLABORATOR`, `CONTRIBUTOR`, `FIRST_TIME_CONTRIBUTOR`, `FIRST_TIMER`, `NONE`.
 
 ## License
 
-MIT — do whatever you want with it.
+MIT

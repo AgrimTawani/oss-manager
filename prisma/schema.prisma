@@ -1,12 +1,10 @@
-// Defaults to SQLite so the app runs with zero external services.
-// To use Postgres instead (recommended for multi-user / cloud deploys):
-//   1. Set provider = "postgresql" below
-//   2. Set DATABASE_URL in .env to your Postgres connection string
-//   3. Run `npm run db:push`
+// Neon Postgres — dev branch locally, main branch on Vercel.
+// Set DATABASE_URL (pooled) and DATABASE_URL_UNPOOLED (direct) in .env.
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 generator client {
@@ -17,7 +15,7 @@ model User {
   id           String   @id @default(cuid())
   githubId     String   @unique
   githubLogin  String
-  accessToken  String // encrypted GitHub OAuth token, used for API calls on their behalf
+  accessToken  String // GitHub OAuth token, used for API calls on their behalf
   createdAt    DateTime @default(now())
 
   repos         TrackedRepo[]
@@ -25,12 +23,12 @@ model User {
 }
 
 model TrackedRepo {
-  id                 String    @id @default(cuid())
-  owner              String
-  name               String
-  addedAt            DateTime  @default(now())
-  lastPolledAt       DateTime?
-  lastSeenIssueNumber Int      @default(0)
+  id                  String    @id @default(cuid())
+  owner               String
+  name                String
+  addedAt             DateTime  @default(now())
+  lastPolledAt        DateTime?
+  lastSeenIssueNumber Int       @default(0)
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
