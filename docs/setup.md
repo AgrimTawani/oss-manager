@@ -1,4 +1,4 @@
-# Remaining setup (requires your accounts)
+# Setup guide
 
 Complete these steps after pulling the latest code. The codebase is wired for Neon + Vercel; you only need to plug in credentials.
 

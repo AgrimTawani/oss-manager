@@ -7,6 +7,12 @@
       "skillPath": "skills/deployments-cicd/SKILL.md",
       "computedHash": "721c93b2b503498dbf48e475dcac879e5090bf10ed978028837e71194f915590"
     },
+    "neon": {
+      "source": "neondatabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/neon/SKILL.md",
+      "computedHash": "3d6808e4d2c80d387f933e0562ec75d3f748d8233634ea1cc3c1af81fdada00f"
+    },
     "neon-postgres": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",

@@ -17,7 +17,7 @@ issue — never random drive-by issues from strangers.
 
 Next.js (App Router) · Prisma · Neon Postgres · NextAuth (GitHub OAuth) · Tailwind CSS · Vercel
 
-## Quick start (local)
+## Quick start
 
 ```bash
 git clone https://github.com/AgrimTawani/oss-manager
@@ -26,95 +26,23 @@ npm install
 cp .env.example .env
 ```
 
-### 1. Neon database
-
-1. Create a project at [neon.tech](https://neon.tech) (free tier).
-2. Create a **dev** branch for local development; keep **main** for production.
-3. Copy connection strings into `.env`:
-   - `DATABASE_URL` — **pooled** URL (hostname includes `-pooler`)
-   - `DATABASE_URL_UNPOOLED` — **direct** URL (no `-pooler`, for migrations)
-
-Or run the Neon CLI wizard:
+Fill in `.env` (Neon URLs, GitHub OAuth, secrets), then:
 
 ```bash
-npx neon@latest init
-```
-
-Apply migrations to your dev branch:
-
-```bash
-npx prisma migrate dev
-```
-
-### 2. GitHub OAuth
-
-Create an OAuth App at https://github.com/settings/developers
-
-| Field | Local value |
-|-------|-------------|
-| Homepage URL | `http://localhost:3000` |
-| Callback URL | `http://localhost:3000/api/auth/callback/github` |
-
-Add `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to `.env`.
-
-Generate secrets:
-
-```powershell
-# PowerShell
-[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
-```
-
-Set `NEXTAUTH_SECRET` and `POLL_SECRET` in `.env`.
-
-### 3. Run
-
-```bash
+npx prisma migrate deploy
 npm run dev
 ```
 
-Open http://localhost:3000, sign in with GitHub, add a repo, then:
+See the **[docs/](docs/README.md)** folder for the full setup, deployment, and environment variable guides.
 
-```bash
-npm run poll
-```
+## Documentation
 
-## Environment variables
-
-| Variable | Local | Vercel (production) |
-|----------|-------|---------------------|
-| `DATABASE_URL` | Neon dev branch (pooled) | Neon main branch (pooled) |
-| `DATABASE_URL_UNPOOLED` | Neon dev branch (direct) | Neon main branch (direct) |
-| `GITHUB_CLIENT_ID` | OAuth app | Same |
-| `GITHUB_CLIENT_SECRET` | OAuth app | Same |
-| `NEXTAUTH_SECRET` | Random | New random (prod) |
-| `NEXTAUTH_URL` | `http://localhost:3000` | `https://your-app.vercel.app` |
-| `POLL_SECRET` | Random | New random (prod) |
-
-See [`.env.example`](.env.example) for the full template.
-
-## Deploy to Vercel
-
-1. Import the GitHub repo in [Vercel](https://vercel.com).
-2. Set all production env vars (Neon **main** branch URLs).
-3. Add production OAuth callback: `https://your-app.vercel.app/api/auth/callback/github`
-4. Deploy — build runs `prisma migrate deploy` automatically.
-
-### GitHub Actions polling (production)
-
-Add repo secrets under **Settings → Secrets → Actions**:
-
-| Secret | Value |
-|--------|-------|
-| `APP_URL` | `https://your-app.vercel.app` |
-| `POLL_SECRET` | Same as Vercel |
-
-The workflow at [`.github/workflows/poll.yml`](.github/workflows/poll.yml) calls `/api/poll` every 15 minutes.
-
-Manual poll (local or prod):
-
-```bash
-curl -X POST http://localhost:3000/api/poll -H "Authorization: Bearer YOUR_POLL_SECRET"
-```
+| Doc | Description |
+|-----|-------------|
+| [docs/architecture.md](docs/architecture.md) | System design, data model, and core flows |
+| [docs/setup.md](docs/setup.md) | Neon, OAuth, Vercel deploy, GitHub Actions |
+| [docs/README.md](docs/README.md) | Doc index and quick links |
+| [.env.example](.env.example) | Environment variable template |
 
 ## Health check
 
@@ -133,6 +61,7 @@ app/
     poll/                # triggers a poll run (called by cron/Actions)
     health/              # liveness check
   page.tsx               # the dashboard UI
+docs/                    # setup and deployment guides
 lib/
   github.ts              # GitHub API + maintainer filter
   poll.ts                # core polling logic
