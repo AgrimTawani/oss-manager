@@ -6,12 +6,12 @@ module.exports = {
     extend: {
       colors: {
         ink: "#fafafa",
-        paper: "#050505",
+        paper: "#07080f",
         line: "rgba(255,255,255,0.08)",
         accent: "#3457d5",
         surface: {
-          DEFAULT: "#0a0a0a",
-          raised: "#111111",
+          DEFAULT: "#0c0d14",
+          raised: "#12131c",
           border: "rgba(255,255,255,0.08)",
         },
         github: {

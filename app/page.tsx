@@ -3,6 +3,8 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { PageBackground } from "@/components/ui/page-background";
+import { LandingNavbar } from "@/components/landing/navbar";
 import { HeroSplit } from "@/components/landing/hero-split";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { FeaturesBento } from "@/components/landing/features-bento";
@@ -20,14 +22,17 @@ export default function Home() {
 
   if (status === "loading" || status === "authenticated") {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-paper text-sm text-ink/60">
+      <div className="relative flex min-h-[100dvh] items-center justify-center text-sm text-ink/60">
+        <PageBackground />
         Loading…
       </div>
     );
   }
 
   return (
-    <main className="relative bg-paper">
+    <main className="relative">
+      <PageBackground />
+      <LandingNavbar />
       <HeroSplit />
       <HowItWorks />
       <FeaturesBento />

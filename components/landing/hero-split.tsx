@@ -7,8 +7,7 @@ import { NotificationArtPanel } from "./notification-art-panel";
 
 export function HeroSplit() {
   return (
-    <section className="relative min-h-[100dvh] overflow-hidden px-4 py-16 lg:px-8 lg:py-24">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(52,87,213,0.15),transparent)]" />
+    <section className="relative min-h-[100dvh] overflow-hidden px-4 pb-16 pt-28 lg:px-8 lg:pb-24 lg:pt-32">
 
       <div className="relative mx-auto max-w-7xl">
         <div className="mb-8 lg:hidden">

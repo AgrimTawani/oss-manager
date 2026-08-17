@@ -1,5 +1,6 @@
 "use client";
 
+import { Logo } from "@/components/ui/logo";
 import { signIn } from "next-auth/react";
 
 export function LandingFooter() {
@@ -7,6 +8,7 @@ export function LandingFooter() {
     <footer className="border-t border-line px-4 py-24 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-12 md:flex-row md:items-center">
         <div className="max-w-md">
+          <Logo className="mb-6" />
           <h2 className="font-display text-2xl tracking-[-0.02em] text-ink md:text-3xl">
             Ready to track your next contribution?
           </h2>

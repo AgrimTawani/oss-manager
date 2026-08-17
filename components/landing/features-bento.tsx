@@ -76,7 +76,7 @@ function ContributorHeader() {
 
 export function FeaturesBento() {
   return (
-    <section className="px-4 py-24 lg:px-8 lg:py-32">
+    <section id="features" className="px-4 py-24 lg:px-8 lg:py-32">
       <div className="mx-auto max-w-7xl">
         <div className="mb-16 max-w-2xl">
           <span className="text-[10px] uppercase tracking-[0.2em] text-ink/40">Features</span>
