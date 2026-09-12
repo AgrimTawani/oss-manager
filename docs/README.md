@@ -11,6 +11,6 @@ Project docs for OSS Contribution Manager.
 ## Quick links
 
 - [Repository](https://github.com/AgrimTawani/oss-manager)
-- [Production app](https://oss-manager-agrimtawanis-projects.vercel.app) (requires env vars)
+- [Production app](https://oss-manager-black.vercel.app)
 - [Vercel project settings](https://vercel.com/agrimtawanis-projects/oss-manager/settings/environment-variables)
 - [GitHub Actions secrets](https://github.com/AgrimTawani/oss-manager/settings/secrets/actions)

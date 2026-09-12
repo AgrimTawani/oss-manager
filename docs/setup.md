@@ -42,7 +42,7 @@ Project linked: **agrimtawanis-projects/oss-manager**
 Production URL (once env vars are set and build succeeds):
 
 ```
-https://oss-manager-agrimtawanis-projects.vercel.app
+https://oss-manager-black.vercel.app
 ```
 
 Add these in the [Vercel dashboard](https://vercel.com/agrimtawanis-projects/oss-manager/settings/environment-variables):
@@ -54,7 +54,7 @@ Add these in the [Vercel dashboard](https://vercel.com/agrimtawanis-projects/oss
 | `GITHUB_CLIENT_ID` | Your OAuth app |
 | `GITHUB_CLIENT_SECRET` | Your OAuth app |
 | `NEXTAUTH_SECRET` | New random secret for prod |
-| `NEXTAUTH_URL` | `https://oss-manager-agrimtawanis-projects.vercel.app` |
+| `NEXTAUTH_URL` | `https://oss-manager-black.vercel.app` |
 | `POLL_SECRET` | Must match GitHub Actions secret (already set) |
 
 Redeploy after adding env vars:
@@ -69,13 +69,13 @@ Already configured on the repo:
 
 | Secret | Value |
 |--------|-------|
-| `APP_URL` | `https://oss-manager-agrimtawanis-projects.vercel.app` |
+| `APP_URL` | `https://oss-manager-black.vercel.app` |
 | `POLL_SECRET` | Set (must match Vercel `POLL_SECRET`) |
 
 Settings: https://github.com/AgrimTawani/oss-manager/settings/secrets/actions
 
 Add production OAuth callback:
 
-`https://oss-manager-agrimtawanis-projects.vercel.app/api/auth/callback/github`
+`https://oss-manager-black.vercel.app/api/auth/callback/github`
 
 Then run the **Poll tracked repos** workflow manually once to verify.
