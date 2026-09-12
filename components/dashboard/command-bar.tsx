@@ -1,123 +1,53 @@
 "use client";
 
-import Link from "next/link";
-import { signOut } from "next-auth/react";
-import { cn } from "@/lib/utils";
-import { Logo } from "@/components/ui/logo";
-import type { FeedFilter } from "./types";
-
 export function CommandBar({
-  reposCount,
-  unreadCount,
-  feedFilter,
-  onFeedFilterChange,
-  searchQuery,
-  onSearchChange,
-  onOpenRepos,
-  username,
-  avatarUrl,
+  searchQuery, onSearchChange, onOpenRepos, onRefresh, refreshing, reposCount,
 }: {
-  reposCount: number;
-  unreadCount: number;
-  feedFilter: FeedFilter;
-  onFeedFilterChange: (filter: FeedFilter) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onOpenRepos: () => void;
-  username?: string | null;
-  avatarUrl?: string | null;
+  onRefresh: () => void;
+  refreshing: boolean;
+  reposCount: number;
 }) {
   return (
-    <header className="pointer-events-none relative z-40 px-4 pt-4 lg:px-6">
-      <div className="pointer-events-auto mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 rounded-full border border-white/10 bg-[#0c0d14]/75 px-3 py-2.5 shadow-[0_8px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:gap-4 sm:px-4">
-        <Link href="/dashboard" className="shrink-0 transition-opacity hover:opacity-80">
-          <Logo size="sm" showWordmark={false} />
-        </Link>
-
-        <div className="hidden min-w-0 flex-1 lg:block">
-          <input
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search issues, repos, authors…"
-            className="w-full rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-ink placeholder:text-ink/35 focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="hidden rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-ink/50 sm:inline">
-            {reposCount} tracked
-          </span>
-          <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-ink/50">
-            {unreadCount} unread
-          </span>
-          <span className="hidden rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-ink/40 xl:inline">
-            Poll 15m
-          </span>
-        </div>
-
-        <div className="flex rounded-full border border-white/10 bg-white/[0.02] p-0.5">
-          {(["all", "unread"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => onFeedFilterChange(tab)}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-all duration-300",
-                feedFilter === tab
-                  ? "bg-accent text-white"
-                  : "text-ink/45 hover:text-ink/70"
-              )}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
+    <header className="sticky top-0 z-30 border-b border-border bg-canvas/95 backdrop-blur">
+      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-10">
         <button
           type="button"
           onClick={onOpenRepos}
-          className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-ink/55 transition-colors hover:border-white/20 hover:text-ink lg:hidden"
+          className="inline-flex h-9 w-9 items-center justify-center border border-border text-secondary hover:bg-subtle hover:text-primary lg:hidden"
+          aria-label={`Open repositories menu, ${reposCount} tracked`}
         >
-          Repos ({reposCount})
+          <span aria-hidden="true">☰</span>
         </button>
 
-        <div className="ml-auto flex items-center gap-2 sm:ml-0">
-          {username && (
-            <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] py-1 pl-1 pr-3 sm:flex">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatarUrl}
-                  alt=""
-                  className="h-7 w-7 rounded-full border border-white/10"
-                />
-              ) : (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-xs font-medium text-accent">
-                  {username.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="max-w-[100px] truncate font-mono text-[10px] text-ink/55">
-                {username}
-              </span>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] uppercase tracking-wider text-ink/50 transition-colors hover:border-white/20 hover:text-ink"
-          >
-            Sign out
-          </button>
-        </div>
-      </div>
+        <label className="relative min-w-0 max-w-xl flex-1">
+          <span className="sr-only">Search issues, repositories, or authors</span>
+          <svg aria-hidden="true" viewBox="0 0 20 20" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 fill-none stroke-muted" strokeWidth="1.8">
+            <circle cx="8.5" cy="8.5" r="5.5" />
+            <path d="m13 13 4 4" />
+          </svg>
+          <input
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Search issues, repos, or authors"
+            className="h-10 w-full border border-border bg-panel pl-10 pr-4 text-sm text-primary outline-none placeholder:text-muted focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
+          />
+        </label>
 
-      <div className="pointer-events-auto mx-auto mt-3 max-w-[1600px] lg:hidden">
-        <input
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search issues, repos, authors…"
-          className="w-full rounded-full border border-white/10 bg-[#0c0d14]/75 px-4 py-2.5 text-sm text-ink placeholder:text-ink/35 backdrop-blur-xl focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
-        />
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="inline-flex h-10 items-center gap-2 border border-border bg-panel px-3 text-sm font-medium text-secondary hover:bg-subtle hover:text-primary disabled:cursor-wait disabled:opacity-60"
+        >
+          <svg aria-hidden="true" viewBox="0 0 20 20" className={`h-4 w-4 fill-none stroke-current ${refreshing ? "animate-spin" : ""}`} strokeWidth="1.7">
+            <path d="M16 7a6.5 6.5 0 1 0 .1 5.7" />
+            <path d="M16 3v4h-4" />
+          </svg>
+          <span className="hidden sm:inline">{refreshing ? "Refreshing" : "Refresh"}</span>
+        </button>
       </div>
     </header>
   );

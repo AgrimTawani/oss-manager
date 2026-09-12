@@ -5,10 +5,23 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        ink: "#fafafa",
-        paper: "#07080f",
-        line: "rgba(255,255,255,0.08)",
-        accent: "#3457d5",
+        canvas: "#0d1117",
+        sidebar: "#090c10",
+        panel: "#11161d",
+        subtle: "#171d25",
+        selected: "#1b222c",
+        border: "#252c35",
+        primary: "#f0f3f6",
+        secondary: "#aab3bd",
+        muted: "#747f8b",
+        accent: "#58a6ff",
+        unread: "#101a26",
+        success: "#3fb950",
+        warning: "#d29922",
+        danger: "#f47067",
+        ink: "#f0f3f6",
+        paper: "#0d1117",
+        line: "#252c35",
         surface: {
           DEFAULT: "#0c0d14",
           raised: "#12131c",
@@ -22,7 +35,7 @@ module.exports = {
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
-        display: ["var(--font-instrument-serif)", "Georgia", "serif"],
+        display: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
       },
       animation: {
         spotlight: "spotlight 2s ease 0.75s 1 forwards",

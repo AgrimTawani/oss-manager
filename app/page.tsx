@@ -3,7 +3,6 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { PageBackground } from "@/components/ui/page-background";
 import { LandingNavbar } from "@/components/landing/navbar";
 import { HeroSplit } from "@/components/landing/hero-split";
 import { HowItWorks } from "@/components/landing/how-it-works";
@@ -23,15 +22,13 @@ export default function Home() {
   if (status === "loading" || status === "authenticated") {
     return (
       <div className="relative flex min-h-[100dvh] items-center justify-center text-sm text-ink/60">
-        <PageBackground />
         Loading…
       </div>
     );
   }
 
   return (
-    <main className="relative">
-      <PageBackground />
+    <main className="bg-canvas">
       <LandingNavbar />
       <HeroSplit />
       <HowItWorks />

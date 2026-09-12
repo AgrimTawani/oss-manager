@@ -1,15 +1,8 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { Instrument_Serif } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-instrument-serif",
-});
 
 export const metadata: Metadata = {
   title: "OSS Contribution Manager",
@@ -21,12 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`dark ${GeistSans.variable} ${GeistMono.variable} ${instrumentSerif.variable}`}
+      className={`dark ${GeistSans.variable} ${GeistMono.variable}`}
     >
-      <body className="font-sans antialiased bg-paper text-ink">
-        <div className="noise-overlay" aria-hidden="true" />
-        <Providers>{children}</Providers>
-      </body>
+      <body className="bg-canvas font-sans text-primary antialiased"><Providers>{children}</Providers></body>
     </html>
   );
 }

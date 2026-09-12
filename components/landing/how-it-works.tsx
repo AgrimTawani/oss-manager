@@ -1,83 +1,23 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
-
 const STEPS = [
-  {
-    number: "01",
-    title: "Add a repo",
-    description:
-      "Paste any public GitHub repo URL or owner/name. We start tracking its issue stream immediately.",
-  },
-  {
-    number: "02",
-    title: "We poll GitHub",
-    description:
-      "Every 15 minutes, we check for new issues and read each author's association with the repo.",
-  },
-  {
-    number: "03",
-    title: "Get the signal",
-    description:
-      "Only issues from owners, members, collaborators, and contributors become notifications in your feed.",
-  },
+  ["01", "Add repositories", "Paste an owner/repository pair for every project you want to contribute to."],
+  ["02", "Let the inbox filter", "Every 15 minutes, new issues are checked against the author's relationship to the project."],
+  ["03", "Pick your next issue", "Search, filter by repository, and open promising issues directly on GitHub."],
 ];
 
 export function HowItWorks() {
-  const ref = useRef<HTMLElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
-      { threshold: 0.2 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section id="how-it-works" ref={ref} className="px-4 py-24 lg:px-8 lg:py-32">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-16 max-w-2xl">
-          <span className="text-[10px] uppercase tracking-[0.2em] text-ink/40">Process</span>
-          <h2 className="mt-3 font-display text-3xl tracking-[-0.02em] text-ink md:text-4xl">
-            Three steps to a cleaner issue feed
-          </h2>
-        </div>
-
-        <div className="grid gap-8 md:grid-cols-3 md:gap-6">
-          {STEPS.map((step, index) => (
-            <motion.div
-              key={step.number}
-              initial={{ opacity: 0, y: 16 }}
-              animate={visible ? { opacity: 1, y: 0 } : {}}
-              transition={{
-                delay: index * 0.12,
-                duration: 0.7,
-                ease: [0.32, 0.72, 0, 1],
-              }}
-              className="relative rounded-[1.25rem] border border-line bg-surface-raised p-8"
-            >
-              <span className="font-mono text-4xl font-medium text-accent/30">{step.number}</span>
-              <h3 className="mt-4 text-lg font-medium text-ink">{step.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-ink/55">{step.description}</p>
-              {index < STEPS.length - 1 && (
-                <div
-                  className="absolute -right-3 top-1/2 hidden h-px w-6 bg-line md:block"
-                  aria-hidden="true"
-                />
-              )}
-            </motion.div>
+    <section id="how-it-works" className="border-b border-border">
+      <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <div className="max-w-xl"><p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted">How it works</p><h2 className="mt-3 text-2xl font-semibold tracking-tight text-primary sm:text-3xl">A quieter way to follow active projects.</h2></div>
+        <ol className="mt-12 grid border-l border-t border-border sm:grid-cols-3">
+          {STEPS.map(([number, title, description]) => (
+            <li key={number} className="border-b border-r border-border p-6 sm:min-h-56">
+              <span className="font-mono text-xs text-accent">{number}</span>
+              <h3 className="mt-8 text-base font-semibold text-primary">{title}</h3>
+              <p className="mt-3 text-sm leading-6 text-muted">{description}</p>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );

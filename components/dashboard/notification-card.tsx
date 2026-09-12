@@ -1,100 +1,66 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import {
-  ASSOCIATION_BADGE,
-  ASSOCIATION_LABEL,
-  ASSOCIATION_STRIPE,
-  repoKey,
-} from "./types";
+import { ASSOCIATION_LABEL, repoKey } from "./types";
 import type { NotificationItem } from "./types";
 
-const EASE = [0.32, 0.72, 0, 1] as const;
+const ASSOCIATION_TONE: Record<string, string> = {
+  OWNER: "border-purple-400/25 bg-purple-400/10 text-purple-300",
+  MEMBER: "border-blue-400/25 bg-blue-400/10 text-blue-300",
+  COLLABORATOR: "border-cyan-400/25 bg-cyan-400/10 text-cyan-300",
+  CONTRIBUTOR: "border-amber-400/25 bg-amber-400/10 text-amber-300",
+};
 
 export function NotificationCard({
-  notification,
-  index,
-  onMarkRead,
-  reducedMotion,
+  notification, onMarkRead,
 }: {
   notification: NotificationItem;
-  index: number;
   onMarkRead: (id: string) => void;
-  reducedMotion: boolean;
 }) {
-  const stripe =
-    ASSOCIATION_STRIPE[notification.authorAssociation] ?? "bg-white/30";
-  const badge =
-    ASSOCIATION_BADGE[notification.authorAssociation] ??
-    "bg-white/10 text-ink/60 border-white/10";
+  const repository = repoKey(notification.repo.owner, notification.repo.name);
 
   return (
-    <motion.li
-      layout
-      initial={reducedMotion ? false : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: reducedMotion ? 0 : index * 0.04, duration: 0.5, ease: EASE }}
-      className="list-none"
-      onMouseEnter={() => !notification.read && onMarkRead(notification.id)}
-    >
-      <div
-        className={cn(
-          "group relative overflow-hidden rounded-[1.25rem] border transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
-          notification.read
-            ? "border-white/[0.04] bg-white/[0.015] opacity-55"
-            : "border-accent/20 bg-accent/[0.04] shadow-[0_0_24px_rgba(52,87,213,0.08)] hover:border-accent/30"
-        )}
-      >
-        <div className={cn("absolute inset-y-0 left-0 w-[3px]", stripe)} />
+    <li className={cn("group grid gap-3 border-b border-border px-4 py-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-5", notification.read ? "bg-canvas" : "bg-unread")}>
+      <div className="flex min-w-0 gap-3">
+        <button
+          type="button"
+          onClick={() => onMarkRead(notification.id)}
+          disabled={notification.read}
+          aria-label={notification.read ? "Issue has been read" : "Mark issue as read"}
+          title={notification.read ? "Read" : "Mark as read"}
+          className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <span className={cn("h-2 w-2 rounded-full", notification.read ? "bg-border" : "bg-accent")} />
+        </button>
 
-        <div className="flex flex-col gap-4 p-4 pl-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <h3
-              className={cn(
-                "line-clamp-2 leading-snug text-ink",
-                notification.read ? "text-sm" : "text-base font-medium"
-              )}
-            >
-              {notification.title}
-            </h3>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 font-mono text-[10px] text-ink/55">
-                {repoKey(notification.repo.owner, notification.repo.name)}
-              </span>
-              <span className="font-mono text-[10px] text-ink/40">
-                @{notification.authorLogin}
-              </span>
-              <span className="font-mono text-[10px] text-ink/35">
-                {formatRelativeTime(notification.createdAt)}
-              </span>
-            </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+            <span className="font-medium text-secondary">{repository}</span>
+            <span>#{notification.issueNumber}</span>
+            <span>opened {formatRelativeTime(notification.createdAt)}</span>
           </div>
-
-          <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end lg:flex-row lg:items-center">
-            <span
-              className={cn(
-                "rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-                badge
-              )}
-            >
-              {ASSOCIATION_LABEL[notification.authorAssociation] ??
-                notification.authorAssociation}
+          <a href={notification.issueUrl} target="_blank" rel="noreferrer" onClick={() => onMarkRead(notification.id)} className="mt-1.5 block text-[15px] font-medium leading-6 text-primary hover:text-accent hover:underline hover:underline-offset-4">
+            {notification.title}
+          </a>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+            <span>by @{notification.authorLogin}</span>
+            <span className={cn("border px-1.5 py-0.5 text-[10px] font-medium", ASSOCIATION_TONE[notification.authorAssociation] ?? "border-border bg-subtle text-secondary")}>
+              {ASSOCIATION_LABEL[notification.authorAssociation] ?? notification.authorAssociation}
             </span>
-            <a
-              href={notification.issueUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="group/btn inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium text-[#07080f] transition-all duration-500 hover:bg-white/90 active:scale-[0.98]"
-            >
-              Open issue
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/10 transition-transform duration-500 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-px">
-                ↗
-              </span>
-            </a>
           </div>
         </div>
       </div>
-    </motion.li>
+
+      <div className="flex items-center gap-2 pl-8 sm:pl-0">
+        {!notification.read ? (
+          <button type="button" onClick={() => onMarkRead(notification.id)} className="px-2 py-1.5 text-xs text-muted hover:bg-subtle hover:text-primary">
+            Mark read
+          </button>
+        ) : null}
+        <a href={notification.issueUrl} target="_blank" rel="noreferrer" onClick={() => onMarkRead(notification.id)} aria-label={`Open ${notification.title} on GitHub`} className="inline-flex h-8 items-center gap-1.5 border border-border bg-panel px-2.5 text-xs font-medium text-secondary hover:border-primary/20 hover:bg-subtle hover:text-primary">
+          GitHub <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </li>
   );
 }

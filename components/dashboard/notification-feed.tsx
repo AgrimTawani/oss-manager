@@ -1,21 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 import { NotificationCard } from "./notification-card";
 import { DashboardEmptyState } from "./dashboard-empty-state";
 import type { NotificationItem } from "./types";
 
 export function NotificationFeed({
-  notifications,
-  allNotificationsCount,
-  reposCount,
-  loading,
-  feedTitle,
-  hasActiveFilters,
-  onClearFilters,
-  onMarkRead,
+  notifications, allNotificationsCount, reposCount, loading, feedTitle,
+  hasActiveFilters, onClearFilters, onMarkRead,
 }: {
   notifications: NotificationItem[];
   allNotificationsCount: number;
@@ -26,87 +17,38 @@ export function NotificationFeed({
   onClearFilters: () => void;
   onMarkRead: (id: string) => void;
 }) {
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(mq.matches);
-    const handler = () => setReducedMotion(mq.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-[#0c0d14]/70 p-1.5 backdrop-blur-sm">
-      <div className="flex min-h-0 flex-1 flex-col rounded-[calc(1.5rem-0.375rem)] border border-white/[0.04] bg-[#10111a]/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
-        <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent/70">
-              Signal feed
-            </p>
-            <h2 className="mt-1 text-lg font-medium tracking-[-0.02em] text-ink">
-              {feedTitle}
-            </h2>
-          </div>
-          <p className="font-mono text-[10px] text-ink/35">
-            {notifications.length} shown
-            {allNotificationsCount !== notifications.length &&
-              ` · ${allNotificationsCount} total`}
-          </p>
+    <section aria-labelledby="feed-heading">
+      <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-medium text-muted">ISSUE INBOX</p>
+          <h1 id="feed-heading" className="mt-1 text-2xl font-semibold tracking-tight text-primary">{feedTitle}</h1>
         </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          {loading ? (
-            <ul className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <li
-                  key={i}
-                  className="h-28 animate-pulse rounded-[1.25rem] border border-white/[0.04] bg-white/[0.02]"
-                />
-              ))}
-            </ul>
-          ) : reposCount === 0 ? (
-            <DashboardEmptyState
-              title="Your feed is waiting"
-              description="Add a repository in the sidebar to begin receiving maintainer and contributor issue signals."
-            />
-          ) : notifications.length === 0 ? (
-            <DashboardEmptyState
-              title={
-                hasActiveFilters ? "No matches for this view" : "No signals yet"
-              }
-              description={
-                hasActiveFilters
-                  ? "Try clearing filters or search to see more notifications."
-                  : "When a maintainer or contributor opens an issue on a tracked repo, it will appear here."
-              }
-              action={
-                hasActiveFilters ? (
-                  <button
-                    type="button"
-                    onClick={onClearFilters}
-                    className="rounded-full border border-white/10 px-4 py-2 text-xs text-ink/60 transition-colors hover:border-white/20 hover:text-ink"
-                  >
-                    Clear filters
-                  </button>
-                ) : undefined
-              }
-            />
-          ) : (
-            <motion.ul layout className="space-y-3">
-              {notifications.map((n, i) => (
-                <NotificationCard
-                  key={n.id}
-                  notification={n}
-                  index={i}
-                  onMarkRead={onMarkRead}
-                  reducedMotion={reducedMotion}
-                />
-              ))}
-            </motion.ul>
-          )}
-        </div>
+        <p className="text-xs text-muted">
+          {notifications.length} {notifications.length === 1 ? "issue" : "issues"}
+          {allNotificationsCount !== notifications.length ? ` of ${allNotificationsCount}` : ""}
+        </p>
       </div>
+
+      <div className="overflow-hidden border border-border bg-panel">
+        {loading ? (
+          <div className="divide-y divide-border" aria-label="Loading issues">
+            {[1, 2, 3, 4].map((item) => <div key={item} className="h-28 animate-pulse bg-subtle/40" />)}
+          </div>
+        ) : reposCount === 0 ? (
+          <DashboardEmptyState title="Track your first repository" description="Use + Add in the repository sidebar and enter an owner/repository pair. Relevant issues will appear here after the next check." />
+        ) : notifications.length === 0 ? (
+          <DashboardEmptyState
+            title={hasActiveFilters ? "No issues match this view" : "You're all caught up"}
+            description={hasActiveFilters ? "Clear your filters or try a broader search." : "There are no maintainer or contributor issues in your inbox yet."}
+            action={hasActiveFilters ? <button type="button" onClick={onClearFilters} className="border border-border bg-panel px-3 py-2 text-xs font-medium text-secondary hover:bg-subtle hover:text-primary">Clear filters</button> : undefined}
+          />
+        ) : (
+          <ul>{notifications.map((notification) => <NotificationCard key={notification.id} notification={notification} onMarkRead={onMarkRead} />)}</ul>
+        )}
+      </div>
+
+      <p className="mt-4 text-xs leading-5 text-muted">Issues are checked every 15 minutes. Only owners, members, collaborators, and past contributors appear here.</p>
     </section>
   );
 }

@@ -1,63 +1,39 @@
-"use client";
-
-import { motion } from "framer-motion";
-import { HeroHighlight, LampContainer } from "@/components/ui/lamp";
 import { SignInCard } from "./sign-in-card";
-import { NotificationArtPanel } from "./notification-art-panel";
+
+const MOCK_ISSUES = [
+  { repo: "vercel/next.js", number: "#69842", title: "Improve error message for invalid route groups", author: "maintainer", tone: "text-blue-300" },
+  { repo: "prisma/prisma", number: "#25718", title: "Document migration path for relation mode", author: "member", tone: "text-purple-300" },
+  { repo: "tailwindlabs/tailwindcss", number: "#14505", title: "Add example for container query units", author: "contributor", tone: "text-amber-300" },
+];
 
 export function HeroSplit() {
   return (
-    <section className="relative min-h-[100dvh] overflow-hidden px-4 pb-16 pt-28 lg:px-8 lg:pb-24 lg:pt-32">
-
-      <div className="relative mx-auto max-w-7xl">
-        <div className="mb-8 lg:hidden">
-          <LampContainer className="min-h-[6rem]">
-            <span className="font-display text-2xl text-ink/90">OSS Contribution Manager</span>
-          </LampContainer>
+    <section className="border-b border-border">
+      <div className="mx-auto grid max-w-6xl gap-14 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+        <div>
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.12em] text-accent">A focused inbox for open source</p>
+          <h1 className="max-w-xl text-4xl font-semibold tracking-[-0.04em] text-primary sm:text-5xl sm:leading-[1.08]">Find contribution opportunities worth your time.</h1>
+          <p className="mt-6 max-w-lg text-base leading-7 text-secondary">Track the projects you care about. OSS Manager filters new issues down to the ones opened by maintainers and established contributors, so you can spend less time watching tabs and more time shipping.</p>
+          <div className="mt-8"><SignInCard /></div>
         </div>
 
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
-            className="flex flex-col"
-          >
-            <span className="mb-6 inline-flex w-fit rounded-full border border-line bg-white/[0.03] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-ink/50">
-              Open source · GitHub native
-            </span>
-
-            <h1 className="max-w-2xl font-display text-[clamp(2.25rem,5vw,3.75rem)] leading-[1.08] tracking-[-0.02em] text-ink">
-              Hear from{" "}
-              <HeroHighlight>maintainers</HeroHighlight>, not the noise.
-            </h1>
-
-            <p className="mt-6 max-w-lg text-base leading-relaxed text-ink/55 md:text-lg">
-              Track the repos you want to contribute to. Get notified only when an owner,
-              org member, collaborator, or past contributor opens a new issue — never random
-              drive-by reports from strangers.
-            </p>
-
-            <div className="mt-10 max-w-md">
-              <SignInCard />
-            </div>
-
-            <a
-              href="#how-it-works"
-              className="mt-8 inline-flex items-center gap-2 text-sm text-ink/45 transition-colors duration-300 hover:text-ink/70"
-            >
-              See how it works
-              <span aria-hidden="true">↓</span>
-            </a>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 32 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.9, delay: 0.2, ease: [0.32, 0.72, 0, 1] }}
-          >
-            <NotificationArtPanel />
-          </motion.div>
+        <div className="border border-border bg-panel shadow-2xl shadow-black/25">
+          <div className="flex h-12 items-center justify-between border-b border-border px-4">
+            <span className="text-sm font-semibold text-primary">Issue inbox</span>
+            <span className="text-xs text-muted">3 new</span>
+          </div>
+          <ul>
+            {MOCK_ISSUES.map((issue) => (
+              <li key={issue.title} className="flex gap-3 border-b border-border px-4 py-4 last:border-b-0">
+                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-accent" />
+                <div className="min-w-0">
+                  <p className="text-xs text-muted"><span className="font-medium text-secondary">{issue.repo}</span> · {issue.number}</p>
+                  <p className="mt-1.5 text-sm font-medium leading-5 text-primary">{issue.title}</p>
+                  <p className={`mt-2 text-[11px] ${issue.tone}`}>Opened by {issue.author}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

@@ -3,7 +3,6 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { PageBackground } from "@/components/ui/page-background";
 import { DashboardLayout } from "@/components/dashboard/dashboard-layout";
 import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
 
@@ -23,7 +22,6 @@ export default function DashboardPage() {
   if (status === "loading" || status === "unauthenticated") {
     return (
       <div className="relative flex h-[100dvh] items-center justify-center text-sm text-ink/60">
-        <PageBackground />
         Loading…
       </div>
     );
@@ -37,6 +35,8 @@ export default function DashboardPage() {
       notifications={data.notifications}
       filteredNotifications={data.filteredNotifications}
       loading={data.loading}
+      refreshing={data.refreshing}
+      dataError={data.dataError}
       adding={data.adding}
       formError={data.formError}
       selectedRepoId={data.selectedRepoId}
@@ -53,6 +53,7 @@ export default function DashboardPage() {
       onFeedFilterChange={data.setFeedFilter}
       onSearchChange={data.setSearchQuery}
       onClearFilters={data.clearFilters}
+      onRefresh={data.refresh}
     />
   );
 }

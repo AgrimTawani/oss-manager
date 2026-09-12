@@ -3,10 +3,12 @@ export interface TrackedRepo {
   owner: string;
   name: string;
   lastPolledAt: string | null;
+  addedAt?: string;
 }
 
 export interface NotificationItem {
   id: string;
+  issueNumber: number;
   title: string;
   issueUrl: string;
   authorLogin: string;

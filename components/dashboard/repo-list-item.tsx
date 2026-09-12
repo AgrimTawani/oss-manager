@@ -1,76 +1,77 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { repoKey } from "./types";
 import type { TrackedRepo } from "./types";
 
 export function RepoListItem({
-  repo,
-  selected,
-  unreadCount,
-  onSelect,
-  onRemove,
+  repo, selected, unreadCount, onSelect, onRemove,
 }: {
   repo: TrackedRepo;
   selected: boolean;
   unreadCount: number;
   onSelect: () => void;
-  onRemove: () => void;
+  onRemove: () => Promise<boolean>;
 }) {
-  const neverPolled = !repo.lastPolledAt;
+  const [confirming, setConfirming] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const label = repoKey(repo.owner, repo.name);
+
+  async function remove() {
+    setRemoving(true);
+    const removed = await onRemove();
+    setRemoving(false);
+    if (!removed) setConfirming(false);
+  }
+
+  if (confirming) {
+    return (
+      <li className="border border-danger/20 bg-danger/5 p-3">
+        <p className="truncate text-xs text-secondary">Stop tracking {label}?</p>
+        <div className="mt-2 flex gap-2">
+          <button type="button" onClick={remove} disabled={removing} className="text-xs font-medium text-danger hover:underline">
+            {removing ? "Removing…" : "Remove"}
+          </button>
+          <button type="button" onClick={() => setConfirming(false)} className="text-xs text-muted hover:text-primary">
+            Cancel
+          </button>
+        </div>
+      </li>
+    );
+  }
 
   return (
-    <motion.li layout className="list-none">
-      <div
+    <li className="group relative">
+      <button
+        type="button"
+        onClick={onSelect}
         className={cn(
-          "group relative flex items-center gap-3 rounded-xl border p-3 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]",
-          selected
-            ? "border-accent/30 bg-accent/[0.08] shadow-[0_0_0_1px_rgba(52,87,213,0.12)]"
-            : "border-white/[0.06] bg-white/[0.02] hover:border-white/12 hover:bg-white/[0.04]"
+          "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
+          selected ? "bg-selected text-primary" : "text-secondary hover:bg-subtle hover:text-primary"
         )}
       >
-        <button
-          type="button"
-          onClick={onSelect}
-          className="flex min-w-0 flex-1 items-start gap-3 text-left"
-        >
-          <span className="relative mt-1.5 flex h-2 w-2 shrink-0">
-            <span
-              className={cn(
-                "h-2 w-2 rounded-full",
-                neverPolled ? "bg-amber-400 animate-pulse" : "bg-emerald-400/80"
-              )}
-            />
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", repo.lastPolledAt ? "bg-success" : "bg-warning")} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">{label}</span>
+          <span className="mt-0.5 block truncate text-[11px] text-muted">
+            {repo.lastPolledAt ? `Checked ${formatRelativeTime(repo.lastPolledAt)}` : "Waiting for first check"}
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-mono text-sm text-ink">
-              {repoKey(repo.owner, repo.name)}
-            </span>
-            <span className="mt-0.5 block font-mono text-[10px] text-ink/40">
-              {neverPolled
-                ? "Awaiting first poll"
-                : formatRelativeTime(repo.lastPolledAt!)}
-            </span>
+        </span>
+        {unreadCount > 0 ? (
+          <span className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[10px] font-semibold text-canvas">
+            {unreadCount}
           </span>
-          {unreadCount > 0 && (
-            <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 font-mono text-[10px] text-white">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          className="shrink-0 rounded-lg px-2 py-1.5 text-[10px] uppercase tracking-wider text-ink/30 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-300 group-hover:opacity-100"
-          aria-label={`Remove ${repoKey(repo.owner, repo.name)}`}
-        >
-          Remove
-        </button>
-      </div>
-    </motion.li>
+        ) : null}
+      </button>
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        aria-label={`Remove ${label}`}
+        className="absolute right-2 top-2 hidden h-6 w-6 items-center justify-center text-muted hover:bg-danger/10 hover:text-danger group-hover:flex group-focus-within:flex"
+      >
+        ×
+      </button>
+    </li>
   );
 }
