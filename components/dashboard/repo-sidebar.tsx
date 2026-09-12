@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { RepoListItem } from "./repo-list-item";
+import { PushNotificationControl } from "./push-notification-control";
 import type { FeedFilter, TrackedRepo } from "./types";
 
 export function RepoSidebar({
@@ -113,7 +114,8 @@ export function RepoSidebar({
       </div>
 
       <div className="shrink-0 border-t border-border p-3">
-        <div className="flex items-center gap-3 px-2 py-1.5">
+        <PushNotificationControl />
+        <div className="mt-3 flex items-center gap-3 px-2 py-1.5">
           {avatarUrl ? <Image src={avatarUrl} alt="" width={28} height={28} className="h-7 w-7 rounded-full" /> : <span className="flex h-7 w-7 items-center justify-center rounded-full bg-subtle text-xs">{username?.charAt(0) ?? "U"}</span>}
           <span className="min-w-0 flex-1 truncate text-xs text-secondary">{username ?? "GitHub account"}</span>
           <button type="button" onClick={() => signOut({ callbackUrl: "/" })} className="text-xs text-muted hover:text-primary">Sign out</button>

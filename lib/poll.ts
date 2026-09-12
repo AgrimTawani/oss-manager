@@ -1,5 +1,7 @@
 import { prisma } from "./db";
+import { Prisma } from "@prisma/client";
 import { fetchNewIssues, isMaintainerOrContributor } from "./github";
+import { sendIssuePush } from "./push";
 
 export interface PollResult {
   reposChecked: number;
@@ -31,20 +33,35 @@ export async function pollAllRepos(): Promise<PollResult> {
 
         if (!isMaintainerOrContributor(issue.author_association)) continue;
 
-        await prisma.notification.upsert({
-          where: { repoId_issueNumber: { repoId: repo.id, issueNumber: issue.number } },
-          update: {},
-          create: {
-            issueNumber: issue.number,
-            issueUrl: issue.html_url,
+        let created = false;
+        try {
+          await prisma.notification.create({
+            data: {
+              issueNumber: issue.number,
+              issueUrl: issue.html_url,
+              title: issue.title,
+              authorLogin: issue.user?.login ?? "unknown",
+              authorAssociation: issue.author_association,
+              repoId: repo.id,
+              userId: repo.userId,
+            },
+          });
+          created = true;
+        } catch (error) {
+          if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+            throw error;
+          }
+        }
+
+        if (created) {
+          notificationsCreated++;
+          await sendIssuePush(repo.userId, {
             title: issue.title,
-            authorLogin: issue.user?.login ?? "unknown",
-            authorAssociation: issue.author_association,
-            repoId: repo.id,
-            userId: repo.userId,
-          },
-        });
-        notificationsCreated++;
+            body: `${repo.owner}/${repo.name} · opened by @${issue.user?.login ?? "unknown"}`,
+            url: issue.html_url,
+            tag: `${repo.id}:${issue.number}`,
+          }).catch((error) => console.error("Could not send issue push", error));
+        }
       }
 
       await prisma.trackedRepo.update({

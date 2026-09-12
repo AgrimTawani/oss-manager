@@ -12,6 +12,8 @@ issue — never random drive-by issues from strangers.
 - Only issues opened by someone with association `OWNER`, `MEMBER`,
   `COLLABORATOR`, or `CONTRIBUTOR` turn into a notification in your feed.
   Everyone else's issues are silently ignored.
+- Enable browser alerts from the dashboard to receive those notifications even
+  when OSS Manager is closed.
 
 ## Stack
 

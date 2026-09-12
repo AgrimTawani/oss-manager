@@ -20,6 +20,7 @@ model User {
 
   repos         TrackedRepo[]
   notifications Notification[]
+  pushSubscriptions PushSubscription[]
 }
 
 model TrackedRepo {
@@ -55,4 +56,18 @@ model Notification {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([repoId, issueNumber])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

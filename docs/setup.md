@@ -57,6 +57,10 @@ Add these in the [Vercel dashboard](https://vercel.com/agrimtawanis-projects/oss
 | `NEXTAUTH_URL` | `https://oss-manager-black.vercel.app` |
 | `POLL_SECRET` | Must match GitHub Actions secret (already set) |
 
+Web Push works automatically using a key derived from `NEXTAUTH_SECRET`. For
+independent key rotation, optionally set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+and `VAPID_SUBJECT` as shown in `.env.example`.
+
 Redeploy after adding env vars:
 
 ```powershell

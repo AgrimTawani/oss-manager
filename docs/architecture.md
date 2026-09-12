@@ -104,6 +104,7 @@ flowchart LR
 erDiagram
   User ||--o{ TrackedRepo : tracks
   User ||--o{ Notification : receives
+  User ||--o{ PushSubscription : enables
   TrackedRepo ||--o{ Notification : generates
 
   User {
@@ -133,6 +134,14 @@ erDiagram
     string authorAssociation
     boolean read
     string repoId FK
+    string userId FK
+  }
+
+  PushSubscription {
+    string id PK
+    string endpoint UK
+    string p256dh
+    string auth
     string userId FK
   }
 ```
@@ -232,6 +241,8 @@ Mark-as-read: `POST /api/notifications/[id]/read` on hover.
 | `/api/repos/[id]` | DELETE | Session | Remove repo |
 | `/api/notifications` | GET | Session | Latest 100 notifications |
 | `/api/notifications/[id]/read` | POST | Session | Mark notification read |
+| `/api/push/public-key` | GET | Session | Get the browser-safe VAPID public key |
+| `/api/push/subscriptions` | POST/DELETE | Session | Enable or disable Web Push for a browser |
 | `/api/poll` | POST | `Bearer POLL_SECRET` | Run poll job |
 | `/api/health` | GET | — | `{ ok: true }` liveness |
 
@@ -242,6 +253,7 @@ Mark-as-read: `POST /api/notifications/[id]/read` on hover.
 | User sessions | NextAuth JWT encrypted with `NEXTAUTH_SECRET` |
 | Poll endpoint | Shared secret `POLL_SECRET` (header check) |
 | GitHub tokens | Stored in Postgres on `User.accessToken` |
+| Push signing | VAPID key derived server-side from `NEXTAUTH_SECRET`, or explicit VAPID env vars |
 | Database | Neon connection over TLS; pooled URL for runtime, direct for migrations |
 
 **OAuth scopes:** `read:user repo` — enough to read user profile and repo issues (including private repos the user can access).
