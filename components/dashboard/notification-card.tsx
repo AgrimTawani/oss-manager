@@ -51,6 +51,32 @@ export function NotificationCard({
             <span className={cn("border px-1.5 py-0.5 text-[10px] font-medium", ASSOCIATION_TONE[notification.authorAssociation] ?? "border-border bg-subtle text-secondary")}>
               {ASSOCIATION_LABEL[notification.authorAssociation] ?? notification.authorAssociation}
             </span>
+            {notification.issueState ? (
+              <span className={cn(
+                "border px-1.5 py-0.5 text-[10px] font-medium",
+                notification.issueState === "OPEN"
+                  ? "border-green-400/25 bg-green-400/10 text-green-300"
+                  : "border-border bg-subtle text-muted"
+              )}>
+                {notification.issueState === "OPEN" ? "Open" : "Closed"}
+              </span>
+            ) : null}
+            {notification.assigneeCount !== null ? (
+              <span className="border border-border bg-subtle px-1.5 py-0.5 text-[10px] font-medium text-secondary">
+                {notification.assigneeCount === 0
+                  ? "Unassigned"
+                  : `${notification.assigneeCount} ${notification.assigneeCount === 1 ? "assignee" : "assignees"}`}
+              </span>
+            ) : null}
+            {notification.linkedPullRequestCount !== null ? (
+              <span className="border border-border bg-subtle px-1.5 py-0.5 text-[10px] font-medium text-secondary">
+                {notification.linkedPullRequestCount === 0
+                  ? "No linked PR"
+                  : `${notification.linkedPullRequestCount} linked ${notification.linkedPullRequestCount === 1 ? "PR" : "PRs"}`}
+              </span>
+            ) : (
+              <span className="text-[10px] text-muted">Details syncing…</span>
+            )}
           </div>
         </div>
       </div>

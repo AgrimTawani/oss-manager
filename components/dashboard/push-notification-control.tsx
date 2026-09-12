@@ -20,13 +20,29 @@ function urlBase64ToUint8Array(value: string) {
   return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
 }
 
+async function registerServiceWorker() {
+  await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
+  return navigator.serviceWorker.ready;
+}
+
+function friendlyPushError(caught: unknown) {
+  const message = caught instanceof Error ? caught.message : "";
+  if (/push service error/i.test(message) || (caught instanceof DOMException && caught.name === "AbortError")) {
+    return "This browser's push service is unavailable. Open OSS Manager in Chrome, Edge, Firefox, or Safari.";
+  }
+  if (/permission/i.test(message)) {
+    return "Notification permission was not granted. Check this site's browser settings.";
+  }
+  return message || "Could not enable notifications on this browser.";
+}
+
 export function PushNotificationControl() {
   const [state, setState] = useState<PushState>("checking");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    if (!window.isSecureContext || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
       setState("unsupported");
       return;
     }
@@ -35,7 +51,7 @@ export function PushNotificationControl() {
       return;
     }
 
-    navigator.serviceWorker.register("/sw.js").then(async (registration) => {
+    registerServiceWorker().then(async (registration) => {
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) await saveSubscription(subscription);
       setState(subscription ? "enabled" : "disabled");
@@ -58,18 +74,40 @@ export function PushNotificationControl() {
       const keyResponse = await fetch("/api/push/public-key");
       if (!keyResponse.ok) throw new Error("Notifications are not configured on the server.");
       const { publicKey } = await keyResponse.json();
-      const registration = await navigator.serviceWorker.ready;
+      const applicationServerKey = urlBase64ToUint8Array(publicKey);
+      if (applicationServerKey.length !== 65 || applicationServerKey[0] !== 4) {
+        throw new Error("The server returned an invalid notification key.");
+      }
+
+      let registration = await registerServiceWorker();
       const subscription =
         (await registration.pushManager.getSubscription()) ||
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        }));
+        (await (async () => {
+          try {
+            return await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey,
+            });
+          } catch (firstError) {
+            if (!(firstError instanceof DOMException) || firstError.name !== "AbortError") {
+              throw firstError;
+            }
+
+            // A stale registration can make Chromium reject a valid push
+            // subscription. Re-register once before surfacing a browser error.
+            await registration.unregister();
+            registration = await registerServiceWorker();
+            return registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey,
+            });
+          }
+        })());
 
       await saveSubscription(subscription);
       setState("enabled");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not enable notifications.");
+      setError(friendlyPushError(caught));
     } finally {
       setBusy(false);
     }

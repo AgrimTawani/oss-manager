@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { pollAllRepos } from "@/lib/poll";
 
+export const maxDuration = 300;
+
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization");
   const expected = `Bearer ${process.env.POLL_SECRET}`;

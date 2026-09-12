@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FeedFilter, NotificationItem, TrackedRepo } from "./types";
+import type {
+  AssignmentFilter,
+  FeedFilter,
+  IssueStateFilter,
+  NotificationItem,
+  OrganizationSummary,
+  PullRequestFilter,
+  SortOrder,
+  TrackedRepo,
+} from "./types";
 import { repoKey } from "./types";
 
 export function useDashboardData(enabled: boolean) {
@@ -14,7 +23,13 @@ export function useDashboardData(enabled: boolean) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<string | null>(null);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>("all");
+  const [issueStateFilter, setIssueStateFilter] = useState<IssueStateFilter>("any");
+  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>("any");
+  const [pullRequestFilter, setPullRequestFilter] = useState<PullRequestFilter>("any");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [groupByOrganization, setGroupByOrganization] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const loadData = useCallback(async (background = false) => {
@@ -68,6 +83,42 @@ export function useDashboardData(enabled: boolean) {
     return map;
   }, [notifications, repos]);
 
+  const organizations = useMemo<OrganizationSummary[]>(() => {
+    const summaries = new Map<string, OrganizationSummary>();
+    for (const repo of repos) {
+      const current = summaries.get(repo.owner) ?? {
+        owner: repo.owner,
+        repoCount: 0,
+        issueCount: 0,
+        unreadCount: 0,
+      };
+      current.repoCount++;
+      summaries.set(repo.owner, current);
+    }
+    for (const notification of notifications) {
+      const current = summaries.get(notification.repo.owner);
+      if (!current) continue;
+      current.issueCount++;
+      if (!notification.read) current.unreadCount++;
+    }
+    return [...summaries.values()].sort((a, b) => a.owner.localeCompare(b.owner));
+  }, [notifications, repos]);
+
+  const readyCount = useMemo(
+    () => notifications.filter((notification) =>
+      notification.issueState === "OPEN" &&
+      notification.assigneeCount === 0 &&
+      notification.linkedPullRequestCount === 0
+    ).length,
+    [notifications]
+  );
+
+  const readyViewActive =
+    feedFilter === "all" &&
+    issueStateFilter === "open" &&
+    assignmentFilter === "unassigned" &&
+    pullRequestFilter === "none";
+
   const filteredNotifications = useMemo(() => {
     let list = notifications;
 
@@ -80,8 +131,31 @@ export function useDashboardData(enabled: boolean) {
       }
     }
 
+    if (selectedOwner) {
+      list = list.filter((notification) => notification.repo.owner === selectedOwner);
+    }
+
     if (feedFilter === "unread") {
       list = list.filter((n) => !n.read);
+    }
+
+
+    if (issueStateFilter !== "any") {
+      list = list.filter((notification) =>
+        notification.issueState === issueStateFilter.toUpperCase()
+      );
+    }
+
+    if (assignmentFilter === "unassigned") {
+      list = list.filter((notification) => notification.assigneeCount === 0);
+    } else if (assignmentFilter === "assigned") {
+      list = list.filter((notification) => (notification.assigneeCount ?? 0) > 0);
+    }
+
+    if (pullRequestFilter === "none") {
+      list = list.filter((notification) => notification.linkedPullRequestCount === 0);
+    } else if (pullRequestFilter === "linked") {
+      list = list.filter((notification) => (notification.linkedPullRequestCount ?? 0) > 0);
     }
 
     const q = searchQuery.trim().toLowerCase();
@@ -98,21 +172,38 @@ export function useDashboardData(enabled: boolean) {
       });
     }
 
-    return list;
-  }, [notifications, repos, selectedRepoId, feedFilter, searchQuery]);
+    return [...list].sort((a, b) => {
+      const aTime = new Date(a.issueCreatedAt ?? a.createdAt).getTime();
+      const bTime = new Date(b.issueCreatedAt ?? b.createdAt).getTime();
+      return sortOrder === "newest" ? bTime - aTime : aTime - bTime;
+    });
+  }, [
+    notifications,
+    repos,
+    selectedRepoId,
+    selectedOwner,
+    feedFilter,
+    issueStateFilter,
+    assignmentFilter,
+    pullRequestFilter,
+    searchQuery,
+    sortOrder,
+  ]);
 
   const feedTitle = useMemo(() => {
-    if (feedFilter === "unread") {
-      return selectedRepoId
-        ? `Unread · ${repos.find((r) => r.id === selectedRepoId)?.owner}/${repos.find((r) => r.id === selectedRepoId)?.name}`
-        : "Unread issues";
-    }
+    const selectedRepo = selectedRepoId ? repos.find((repo) => repo.id === selectedRepoId) : null;
+    const scope = selectedRepo
+      ? `${selectedRepo.owner}/${selectedRepo.name}`
+      : selectedOwner ?? null;
+
+    if (readyViewActive) return scope ? `Ready to pick up · ${scope}` : "Ready to pick up";
+    if (feedFilter === "unread") return scope ? `Unread · ${scope}` : "Unread issues";
     if (selectedRepoId) {
-      const repo = repos.find((r) => r.id === selectedRepoId);
-      return repo ? `${repo.owner}/${repo.name}` : "Filtered signals";
+      return selectedRepo ? `${selectedRepo.owner}/${selectedRepo.name}` : "Filtered issues";
     }
+    if (selectedOwner) return selectedOwner;
     return "All issues";
-  }, [feedFilter, selectedRepoId, repos]);
+  }, [feedFilter, readyViewActive, selectedOwner, selectedRepoId, repos]);
 
   async function addRepo(input: string) {
     setFormError(null);
@@ -186,8 +277,46 @@ export function useDashboardData(enabled: boolean) {
 
   function clearFilters() {
     setSelectedRepoId(null);
+    setSelectedOwner(null);
     setFeedFilter("all");
+    setIssueStateFilter("any");
+    setAssignmentFilter("any");
+    setPullRequestFilter("any");
+    setSortOrder("newest");
+    setGroupByOrganization(false);
     setSearchQuery("");
+  }
+
+  function selectRepo(id: string | null) {
+    setSelectedRepoId(id);
+    if (id) setSelectedOwner(null);
+  }
+
+  function selectOwner(owner: string | null) {
+    setSelectedOwner(owner);
+    if (owner) setSelectedRepoId(null);
+  }
+
+  function showAllIssues() {
+    clearFilters();
+  }
+
+  function showUnreadIssues() {
+    setSelectedRepoId(null);
+    setSelectedOwner(null);
+    setFeedFilter("unread");
+    setIssueStateFilter("any");
+    setAssignmentFilter("any");
+    setPullRequestFilter("any");
+  }
+
+  function showReadyIssues() {
+    setSelectedRepoId(null);
+    setSelectedOwner(null);
+    setFeedFilter("all");
+    setIssueStateFilter("open");
+    setAssignmentFilter("unassigned");
+    setPullRequestFilter("none");
   }
 
   return {
@@ -200,9 +329,24 @@ export function useDashboardData(enabled: boolean) {
     formError,
     setFormError,
     selectedRepoId,
-    setSelectedRepoId,
+    selectRepo,
+    selectedOwner,
+    selectOwner,
+    organizations,
+    readyCount,
     feedFilter,
     setFeedFilter,
+    issueStateFilter,
+    setIssueStateFilter,
+    assignmentFilter,
+    setAssignmentFilter,
+    pullRequestFilter,
+    setPullRequestFilter,
+    sortOrder,
+    setSortOrder,
+    groupByOrganization,
+    setGroupByOrganization,
+    readyViewActive,
     searchQuery,
     setSearchQuery,
     unreadCount,
@@ -213,6 +357,9 @@ export function useDashboardData(enabled: boolean) {
     removeRepo,
     markRead,
     clearFilters,
+    showAllIssues,
+    showUnreadIssues,
+    showReadyIssues,
     refresh: () => loadData(true),
   };
 }

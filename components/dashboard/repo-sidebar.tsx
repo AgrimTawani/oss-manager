@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { RepoListItem } from "./repo-list-item";
 import { PushNotificationControl } from "./push-notification-control";
-import type { FeedFilter, TrackedRepo } from "./types";
+import type { FeedFilter, OrganizationSummary, TrackedRepo } from "./types";
 
 export function RepoSidebar({
   repos, loading, adding, formError, selectedRepoId, unreadByRepoId, unreadCount,
-  feedFilter, username, avatarUrl, onSelectRepo, onClearSelection, onAddRepo,
-  onRemoveRepo, onFeedFilterChange, onClose, className,
+  readyCount, feedFilter, readyViewActive, selectedOwner, organizations,
+  allIssuesViewActive, username, avatarUrl, onSelectRepo, onSelectOwner,
+  onShowAllIssues, onShowUnreadIssues, onShowReadyIssues, onAddRepo,
+  onRemoveRepo, onClose, className,
 }: {
   repos: TrackedRepo[];
   loading: boolean;
@@ -21,14 +23,21 @@ export function RepoSidebar({
   selectedRepoId: string | null;
   unreadByRepoId: Map<string, number>;
   unreadCount: number;
+  readyCount: number;
   feedFilter: FeedFilter;
+  readyViewActive: boolean;
+  allIssuesViewActive: boolean;
+  selectedOwner: string | null;
+  organizations: OrganizationSummary[];
   username?: string | null;
   avatarUrl?: string | null;
   onSelectRepo: (id: string | null) => void;
-  onClearSelection: () => void;
+  onSelectOwner: (owner: string | null) => void;
+  onShowAllIssues: () => void;
+  onShowUnreadIssues: () => void;
+  onShowReadyIssues: () => void;
   onAddRepo: (input: string) => Promise<boolean>;
   onRemoveRepo: (id: string) => Promise<boolean>;
-  onFeedFilterChange: (filter: FeedFilter) => void;
   onClose?: () => void;
   className?: string;
 }) {
@@ -60,19 +69,52 @@ export function RepoSidebar({
         <nav aria-label="Issue views" className="space-y-1">
           <button
             type="button"
-            onClick={() => { onClearSelection(); onFeedFilterChange("all"); }}
-            className={cn("flex w-full items-center justify-between px-3 py-2 text-sm", !selectedRepoId && feedFilter === "all" ? "bg-selected text-primary" : "text-secondary hover:bg-subtle")}
+            onClick={onShowAllIssues}
+            className={cn("flex w-full items-center justify-between px-3 py-2 text-sm", allIssuesViewActive ? "bg-selected text-primary" : "text-secondary hover:bg-subtle")}
           >
             <span>All issues</span><span className="text-xs text-muted">{repos.length ? "Latest 100" : ""}</span>
           </button>
           <button
             type="button"
-            onClick={() => { onClearSelection(); onFeedFilterChange("unread"); }}
+            onClick={onShowUnreadIssues}
             className={cn("flex w-full items-center justify-between px-3 py-2 text-sm", !selectedRepoId && feedFilter === "unread" ? "bg-selected text-primary" : "text-secondary hover:bg-subtle")}
           >
             <span>Unread</span><span className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[10px] font-semibold text-canvas">{unreadCount}</span>
           </button>
+          <button
+            type="button"
+            onClick={onShowReadyIssues}
+            className={cn("flex w-full items-center justify-between px-3 py-2 text-sm", readyViewActive && !selectedRepoId && !selectedOwner ? "bg-selected text-primary" : "text-secondary hover:bg-subtle")}
+          >
+            <span>Ready to pick up</span>
+            <span className="text-xs text-muted">{readyCount}</span>
+          </button>
         </nav>
+
+        {organizations.length ? (
+          <div className="mt-7">
+            <h2 className="px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Organizations</h2>
+            <ul className="mt-2 space-y-0.5">
+              {organizations.map((organization) => (
+                <li key={organization.owner}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectOwner(selectedOwner === organization.owner ? null : organization.owner)}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm",
+                      selectedOwner === organization.owner ? "bg-selected text-primary" : "text-secondary hover:bg-subtle"
+                    )}
+                  >
+                    <span className="min-w-0 truncate">{organization.owner}</span>
+                    <span className="shrink-0 text-[10px] text-muted" title={`${organization.repoCount} tracked ${organization.repoCount === 1 ? "repository" : "repositories"}`}>
+                      {organization.issueCount} {organization.issueCount === 1 ? "issue" : "issues"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="mt-7 flex items-center justify-between px-3">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">Repositories</h2>

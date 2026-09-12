@@ -16,14 +16,16 @@ body {
 
 button,
 a,
-input {
+input,
+select {
   transition-duration: 120ms;
   transition-property: color, background-color, border-color, opacity;
 }
 
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 2px solid rgba(88, 166, 255, 0.7);
   outline-offset: 2px;
 }

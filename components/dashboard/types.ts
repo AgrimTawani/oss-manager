@@ -14,12 +14,27 @@ export interface NotificationItem {
   authorLogin: string;
   authorAssociation: string;
   issueCreatedAt: string | null;
+  issueState: "OPEN" | "CLOSED" | null;
+  assigneeCount: number | null;
+  linkedPullRequestCount: number | null;
+  metadataUpdatedAt: string | null;
   createdAt: string;
   read: boolean;
   repo: { owner: string; name: string };
 }
 
 export type FeedFilter = "all" | "unread";
+export type IssueStateFilter = "any" | "open" | "closed";
+export type AssignmentFilter = "any" | "unassigned" | "assigned";
+export type PullRequestFilter = "any" | "none" | "linked";
+export type SortOrder = "newest" | "oldest";
+
+export interface OrganizationSummary {
+  owner: string;
+  repoCount: number;
+  issueCount: number;
+  unreadCount: number;
+}
 
 export const ASSOCIATION_LABEL: Record<string, string> = {
   OWNER: "Owner",

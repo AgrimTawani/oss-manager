@@ -1,23 +1,36 @@
 import { prisma } from "./db";
 import { Prisma } from "@prisma/client";
-import { fetchIssue, fetchNewIssues, isMaintainerOrContributor } from "./github";
+import {
+  fetchIssue,
+  fetchLinkedPullRequestCount,
+  fetchNewIssues,
+  isMaintainerOrContributor,
+} from "./github";
 import { sendIssuePush } from "./push";
 
-const TIMESTAMP_BACKFILL_LIMIT = 100;
-const TIMESTAMP_BACKFILL_CONCURRENCY = 10;
+const METADATA_REFRESH_LIMIT = 100;
+const METADATA_REFRESH_CONCURRENCY = 10;
+const METADATA_MAX_AGE_MS = 60 * 60 * 1000;
 
 export interface PollResult {
   reposChecked: number;
   notificationsCreated: number;
-  timestampsBackfilled: number;
+  metadataRefreshed: number;
   errors: { repo: string; message: string }[];
 }
 
-/** Repairs notifications imported before issueCreatedAt was introduced.
- * Work is capped per run so a large account cannot monopolize the poll job. */
-async function backfillIssueCreatedAt(): Promise<number> {
+/** Keeps opportunity metadata current and repairs notifications created before
+ * these fields existed. Work is capped so a large inbox cannot monopolize a run. */
+async function refreshIssueMetadata(): Promise<number> {
+  const staleBefore = new Date(Date.now() - METADATA_MAX_AGE_MS);
   const notifications = await prisma.notification.findMany({
-    where: { issueCreatedAt: null },
+    where: {
+      OR: [
+        { issueCreatedAt: null },
+        { metadataUpdatedAt: null },
+        { metadataUpdatedAt: { lt: staleBefore } },
+      ],
+    },
     select: {
       id: true,
       issueNumber: true,
@@ -29,40 +42,52 @@ async function backfillIssueCreatedAt(): Promise<number> {
         },
       },
     },
-    orderBy: { createdAt: "asc" },
-    take: TIMESTAMP_BACKFILL_LIMIT,
+    orderBy: [{ metadataUpdatedAt: { sort: "asc", nulls: "first" } }, { createdAt: "asc" }],
+    take: METADATA_REFRESH_LIMIT,
   });
 
-  let backfilled = 0;
-  for (let index = 0; index < notifications.length; index += TIMESTAMP_BACKFILL_CONCURRENCY) {
-    const batch = notifications.slice(index, index + TIMESTAMP_BACKFILL_CONCURRENCY);
+  let refreshed = 0;
+  for (let index = 0; index < notifications.length; index += METADATA_REFRESH_CONCURRENCY) {
+    const batch = notifications.slice(index, index + METADATA_REFRESH_CONCURRENCY);
     const results = await Promise.all(
       batch.map(async (notification) => {
         try {
-          const issue = await fetchIssue(
-            notification.repo.owner,
-            notification.repo.name,
-            notification.issueNumber,
-            notification.repo.user.accessToken
-          );
-          const result = await prisma.notification.updateMany({
-            where: { id: notification.id, issueCreatedAt: null },
-            data: { issueCreatedAt: new Date(issue.created_at) },
+          const { owner, name, user } = notification.repo;
+          const [issue, linkedPullRequestCount] = await Promise.all([
+            fetchIssue(owner, name, notification.issueNumber, user.accessToken),
+            fetchLinkedPullRequestCount(
+              owner,
+              name,
+              notification.issueNumber,
+              user.accessToken
+            ),
+          ]);
+          await prisma.notification.update({
+            where: { id: notification.id },
+            data: {
+              title: issue.title,
+              issueUrl: issue.html_url,
+              issueCreatedAt: new Date(issue.created_at),
+              issueState: issue.state.toUpperCase(),
+              assigneeCount: issue.assignees.length,
+              linkedPullRequestCount,
+              metadataUpdatedAt: new Date(),
+            },
           });
-          return result.count;
+          return 1;
         } catch (error) {
           console.error(
-            `Could not backfill issue timestamp for ${notification.repo.owner}/${notification.repo.name}#${notification.issueNumber}`,
+            `Could not refresh issue metadata for ${notification.repo.owner}/${notification.repo.name}#${notification.issueNumber}`,
             error
           );
           return 0;
         }
       })
     );
-    backfilled += results.reduce((total, count) => total + count, 0);
+    refreshed += results.reduce<number>((total, count) => total + count, 0);
   }
 
-  return backfilled;
+  return refreshed;
 }
 
 /** Polls every tracked repo for every user and stores notifications for
@@ -89,6 +114,18 @@ export async function pollAllRepos(): Promise<PollResult> {
 
         if (!isMaintainerOrContributor(issue.author_association)) continue;
 
+        let linkedPullRequestCount: number | null = null;
+        try {
+          linkedPullRequestCount = await fetchLinkedPullRequestCount(
+            repo.owner,
+            repo.name,
+            issue.number,
+            repo.user.accessToken
+          );
+        } catch (error) {
+          console.error(`Could not read linked PRs for ${repo.owner}/${repo.name}#${issue.number}`, error);
+        }
+
         let created = false;
         try {
           await prisma.notification.create({
@@ -99,6 +136,10 @@ export async function pollAllRepos(): Promise<PollResult> {
               authorLogin: issue.user?.login ?? "unknown",
               authorAssociation: issue.author_association,
               issueCreatedAt: new Date(issue.created_at),
+              issueState: issue.state.toUpperCase(),
+              assigneeCount: issue.assignees.length,
+              linkedPullRequestCount,
+              metadataUpdatedAt: linkedPullRequestCount === null ? null : new Date(),
               repoId: repo.id,
               userId: repo.userId,
             },
@@ -133,6 +174,6 @@ export async function pollAllRepos(): Promise<PollResult> {
     }
   }
 
-  const timestampsBackfilled = await backfillIssueCreatedAt();
-  return { reposChecked: repos.length, notificationsCreated, timestampsBackfilled, errors };
+  const metadataRefreshed = await refreshIssueMetadata();
+  return { reposChecked: repos.length, notificationsCreated, metadataRefreshed, errors };
 }

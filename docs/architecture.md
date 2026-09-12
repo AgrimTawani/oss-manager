@@ -133,6 +133,10 @@ erDiagram
     string authorLogin
     string authorAssociation
     datetime issueCreatedAt "GitHub creation time"
+    string issueState
+    int assigneeCount
+    int linkedPullRequestCount
+    datetime metadataUpdatedAt
     datetime createdAt "discovery time"
     boolean read
     string repoId FK
@@ -210,13 +214,15 @@ sequenceDiagram
     L->>GH: GET /repos/{owner}/{repo}/issues
     L->>L: Filter: number > lastSeenIssueNumber, not PR
     L->>L: Filter: author_association in OWNER|MEMBER|COLLABORATOR|CONTRIBUTOR
-    L->>DB: Create Notification with GitHub created_at
+    L->>GH: Read assignees and linked PR references
+    L->>DB: Create Notification with GitHub metadata
     L->>DB: Update lastSeenIssueNumber, lastPolledAt
   end
-  P->>GHA: { reposChecked, notificationsCreated, timestampsBackfilled, errors }
+  P->>GHA: { reposChecked, notificationsCreated, metadataRefreshed, errors }
 ```
 
 **Filter logic** lives in `lib/github.ts` (`MAINTAINER_ASSOCIATIONS`). Issues from `NONE`, `FIRST_TIMER`, etc. are silently skipped.
+Opportunity metadata is refreshed hourly in capped batches so state, assignments, and linked pull-request filters stay current without exhausting GitHub API limits.
 
 ### 4. Dashboard refresh
 

@@ -38,6 +38,8 @@ export interface GithubIssue {
   html_url: string;
   title: string;
   created_at: string;
+  state: "open" | "closed";
+  assignees: { login: string }[];
   user: { login: string } | null;
   author_association: string;
   pull_request?: unknown; // present when the "issue" is actually a PR
@@ -103,6 +105,50 @@ export async function fetchIssue(
   }
 
   return res.json();
+}
+
+type GithubTimelineEvent = {
+  event?: string;
+  source?: {
+    issue?: {
+      html_url?: string;
+      pull_request?: unknown;
+    };
+  };
+};
+
+/** Counts unique pull requests that GitHub reports as cross-referencing an
+ * issue. This is the same relationship surfaced in an issue's timeline. */
+export async function fetchLinkedPullRequestCount(
+  owner: string,
+  name: string,
+  issueNumber: number,
+  accessToken?: string
+): Promise<number> {
+  const linkedPullRequests = new Set<string>();
+
+  for (let page = 1; page <= 5; page++) {
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}/timeline?per_page=100&page=${page}`,
+      { headers: githubHeaders(accessToken), cache: "no-store" }
+    );
+
+    if (!res.ok) {
+      throw githubIssueError(owner, name, res.status, res.statusText);
+    }
+
+    const events: GithubTimelineEvent[] = await res.json();
+    for (const event of events) {
+      const sourceIssue = event.event === "cross-referenced" ? event.source?.issue : undefined;
+      if (sourceIssue?.pull_request) {
+        linkedPullRequests.add(sourceIssue.html_url ?? `unknown:${page}:${linkedPullRequests.size}`);
+      }
+    }
+
+    if (events.length < 100) break;
+  }
+
+  return linkedPullRequests.size;
 }
 
 /** Returns the current repository-wide issue/PR sequence number so a newly

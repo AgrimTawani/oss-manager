@@ -4,7 +4,17 @@ import { useState } from "react";
 import { CommandBar } from "./command-bar";
 import { RepoSidebar } from "./repo-sidebar";
 import { NotificationFeed } from "./notification-feed";
-import type { FeedFilter, NotificationItem, TrackedRepo } from "./types";
+import { IssueFilters } from "./issue-filters";
+import type {
+  AssignmentFilter,
+  FeedFilter,
+  IssueStateFilter,
+  NotificationItem,
+  OrganizationSummary,
+  PullRequestFilter,
+  SortOrder,
+  TrackedRepo,
+} from "./types";
 
 type DashboardLayoutProps = {
   username?: string | null;
@@ -18,17 +28,33 @@ type DashboardLayoutProps = {
   adding: boolean;
   formError: string | null;
   selectedRepoId: string | null;
+  selectedOwner: string | null;
+  organizations: OrganizationSummary[];
   unreadByRepoId: Map<string, number>;
   unreadCount: number;
+  readyCount: number;
   feedFilter: FeedFilter;
+  issueStateFilter: IssueStateFilter;
+  assignmentFilter: AssignmentFilter;
+  pullRequestFilter: PullRequestFilter;
+  sortOrder: SortOrder;
+  groupByOrganization: boolean;
+  readyViewActive: boolean;
   feedTitle: string;
   searchQuery: string;
   onSelectRepo: (id: string | null) => void;
-  onClearSelection: () => void;
+  onSelectOwner: (owner: string | null) => void;
   onAddRepo: (input: string) => Promise<boolean>;
   onRemoveRepo: (id: string) => Promise<boolean>;
   onMarkRead: (id: string) => void;
-  onFeedFilterChange: (filter: FeedFilter) => void;
+  onIssueStateFilterChange: (filter: IssueStateFilter) => void;
+  onAssignmentFilterChange: (filter: AssignmentFilter) => void;
+  onPullRequestFilterChange: (filter: PullRequestFilter) => void;
+  onSortOrderChange: (sort: SortOrder) => void;
+  onGroupByOrganizationChange: (grouped: boolean) => void;
+  onShowAllIssues: () => void;
+  onShowUnreadIssues: () => void;
+  onShowReadyIssues: () => void;
   onSearchChange: (query: string) => void;
   onClearFilters: () => void;
   onRefresh: () => void;
@@ -36,18 +62,31 @@ type DashboardLayoutProps = {
 
 export function DashboardLayout({
   username, avatarUrl, repos, notifications, filteredNotifications, loading,
-  refreshing, dataError, adding, formError, selectedRepoId, unreadByRepoId,
-  unreadCount, feedFilter, feedTitle, searchQuery, onSelectRepo,
-  onClearSelection, onAddRepo, onRemoveRepo, onMarkRead, onFeedFilterChange,
-  onSearchChange, onClearFilters, onRefresh,
+  refreshing, dataError, adding, formError, selectedRepoId, selectedOwner,
+  organizations, unreadByRepoId, unreadCount, readyCount, feedFilter,
+  issueStateFilter, assignmentFilter, pullRequestFilter, sortOrder,
+  groupByOrganization, readyViewActive, feedTitle, searchQuery, onSelectRepo,
+  onSelectOwner, onAddRepo, onRemoveRepo, onMarkRead,
+  onIssueStateFilterChange, onAssignmentFilterChange, onPullRequestFilterChange,
+  onSortOrderChange, onGroupByOrganizationChange, onShowAllIssues,
+  onShowUnreadIssues, onShowReadyIssues, onSearchChange, onClearFilters, onRefresh,
 }: DashboardLayoutProps) {
   const [mobileReposOpen, setMobileReposOpen] = useState(false);
   const hasActiveFilters =
-    feedFilter !== "all" || Boolean(selectedRepoId) || searchQuery.trim().length > 0;
+    feedFilter !== "all" || Boolean(selectedRepoId) || Boolean(selectedOwner) ||
+    issueStateFilter !== "any" || assignmentFilter !== "any" ||
+    pullRequestFilter !== "any" || searchQuery.trim().length > 0;
+  const allIssuesViewActive =
+    feedFilter === "all" && !selectedRepoId && !selectedOwner &&
+    issueStateFilter === "any" && assignmentFilter === "any" &&
+    pullRequestFilter === "any";
 
   const sidebarProps = {
     repos, loading, adding, formError, selectedRepoId, unreadByRepoId,
-    unreadCount, feedFilter, username, avatarUrl, onAddRepo, onRemoveRepo,
+    unreadCount, readyCount, feedFilter, readyViewActive, selectedOwner,
+    organizations, allIssuesViewActive, username, avatarUrl, onAddRepo,
+    onRemoveRepo, onSelectOwner, onShowAllIssues, onShowUnreadIssues,
+    onShowReadyIssues,
   };
 
   return (
@@ -55,8 +94,6 @@ export function DashboardLayout({
       <RepoSidebar
         {...sidebarProps}
         onSelectRepo={onSelectRepo}
-        onClearSelection={onClearSelection}
-        onFeedFilterChange={onFeedFilterChange}
         className="hidden lg:flex"
       />
 
@@ -80,6 +117,19 @@ export function DashboardLayout({
             </div>
           ) : null}
 
+          <IssueFilters
+            issueState={issueStateFilter}
+            assignment={assignmentFilter}
+            pullRequest={pullRequestFilter}
+            sortOrder={sortOrder}
+            groupByOrganization={groupByOrganization}
+            onIssueStateChange={onIssueStateFilterChange}
+            onAssignmentChange={onAssignmentFilterChange}
+            onPullRequestChange={onPullRequestFilterChange}
+            onSortOrderChange={onSortOrderChange}
+            onGroupByOrganizationChange={onGroupByOrganizationChange}
+          />
+
           <NotificationFeed
             notifications={filteredNotifications}
             allNotificationsCount={notifications.length}
@@ -87,6 +137,7 @@ export function DashboardLayout({
             loading={loading}
             feedTitle={feedTitle}
             hasActiveFilters={hasActiveFilters}
+            groupByOrganization={groupByOrganization}
             onClearFilters={onClearFilters}
             onMarkRead={onMarkRead}
           />
@@ -104,8 +155,10 @@ export function DashboardLayout({
           <RepoSidebar
             {...sidebarProps}
             onSelectRepo={(id) => { onSelectRepo(id); setMobileReposOpen(false); }}
-            onClearSelection={() => { onClearSelection(); setMobileReposOpen(false); }}
-            onFeedFilterChange={(filter) => { onFeedFilterChange(filter); setMobileReposOpen(false); }}
+            onSelectOwner={(owner) => { onSelectOwner(owner); setMobileReposOpen(false); }}
+            onShowAllIssues={() => { onShowAllIssues(); setMobileReposOpen(false); }}
+            onShowUnreadIssues={() => { onShowUnreadIssues(); setMobileReposOpen(false); }}
+            onShowReadyIssues={() => { onShowReadyIssues(); setMobileReposOpen(false); }}
             onClose={() => setMobileReposOpen(false)}
             className="absolute inset-y-0 left-0 flex w-[min(88vw,320px)]"
           />
