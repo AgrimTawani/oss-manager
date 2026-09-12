@@ -132,6 +132,8 @@ erDiagram
     string title
     string authorLogin
     string authorAssociation
+    datetime issueCreatedAt "GitHub creation time"
+    datetime createdAt "discovery time"
     boolean read
     string repoId FK
     string userId FK
@@ -179,15 +181,17 @@ sequenceDiagram
 sequenceDiagram
   participant U as User browser
   participant N as POST /api/repos
+  participant GH as GitHub API
   participant DB as Neon
 
   U->>N: { repo: "owner/name" or URL }
   N->>N: parseRepoInput()
-  N->>DB: Create TrackedRepo (lastSeenIssueNumber = 0)
+  N->>GH: Read current latest issue number
+  N->>DB: Create TrackedRepo with latest number as cursor
   N->>U: 201 Created
 ```
 
-New repos start with `lastSeenIssueNumber = 0`, so the first poll only captures **future** issues — not historical ones.
+New repos start with GitHub's current latest issue number as their cursor, so polling captures only issues created **after** tracking begins. Notifications store GitHub's `created_at` separately from the time OSS Manager discovered them.
 
 ### 3. Scheduled poll (production)
 
@@ -206,10 +210,10 @@ sequenceDiagram
     L->>GH: GET /repos/{owner}/{repo}/issues
     L->>L: Filter: number > lastSeenIssueNumber, not PR
     L->>L: Filter: author_association in OWNER|MEMBER|COLLABORATOR|CONTRIBUTOR
-    L->>DB: Upsert Notification
+    L->>DB: Create Notification with GitHub created_at
     L->>DB: Update lastSeenIssueNumber, lastPolledAt
   end
-  P->>GHA: { reposChecked, notificationsCreated, errors }
+  P->>GHA: { reposChecked, notificationsCreated, timestampsBackfilled, errors }
 ```
 
 **Filter logic** lives in `lib/github.ts` (`MAINTAINER_ASSOCIATIONS`). Issues from `NONE`, `FIRST_TIMER`, etc. are silently skipped.

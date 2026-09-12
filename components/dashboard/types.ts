@@ -13,6 +13,7 @@ export interface NotificationItem {
   issueUrl: string;
   authorLogin: string;
   authorAssociation: string;
+  issueCreatedAt: string | null;
   createdAt: string;
   read: boolean;
   repo: { owner: string; name: string };

@@ -18,6 +18,8 @@ export function NotificationCard({
   onMarkRead: (id: string) => void;
 }) {
   const repository = repoKey(notification.repo.owner, notification.repo.name);
+  const timestamp = notification.issueCreatedAt ?? notification.createdAt;
+  const timestampLabel = notification.issueCreatedAt ? "opened" : "discovered";
 
   return (
     <li className={cn("group grid gap-3 border-b border-border px-4 py-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:px-5", notification.read ? "bg-canvas" : "bg-unread")}>
@@ -37,7 +39,9 @@ export function NotificationCard({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
             <span className="font-medium text-secondary">{repository}</span>
             <span>#{notification.issueNumber}</span>
-            <span>opened {formatRelativeTime(notification.createdAt)}</span>
+            <span title={new Date(timestamp).toLocaleString()}>
+              {timestampLabel} {formatRelativeTime(timestamp)}
+            </span>
           </div>
           <a href={notification.issueUrl} target="_blank" rel="noreferrer" onClick={() => onMarkRead(notification.id)} className="mt-1.5 block text-[15px] font-medium leading-6 text-primary hover:text-accent hover:underline hover:underline-offset-4">
             {notification.title}

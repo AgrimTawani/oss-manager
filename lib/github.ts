@@ -37,9 +37,26 @@ export interface GithubIssue {
   number: number;
   html_url: string;
   title: string;
+  created_at: string;
   user: { login: string } | null;
   author_association: string;
   pull_request?: unknown; // present when the "issue" is actually a PR
+}
+
+function githubHeaders(accessToken?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  return headers;
+}
+
+function githubIssueError(owner: string, name: string, status: number, statusText: string) {
+  if (status === 404) {
+    return new Error(`Repo ${owner}/${name} not found or private without access`);
+  }
+  return new Error(`GitHub API error for ${owner}/${name}: ${status} ${statusText}`);
 }
 
 /**
@@ -52,22 +69,13 @@ export async function fetchNewIssues(
   sinceIssueNumber: number,
   accessToken?: string
 ): Promise<GithubIssue[]> {
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-  };
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-
   const res = await fetch(
     `https://api.github.com/repos/${owner}/${name}/issues?state=open&sort=created&direction=desc&per_page=50`,
-    { headers, cache: "no-store" }
+    { headers: githubHeaders(accessToken), cache: "no-store" }
   );
 
-  if (res.status === 404) {
-    throw new Error(`Repo ${owner}/${name} not found or private without access`);
-  }
   if (!res.ok) {
-    throw new Error(`GitHub API error for ${owner}/${name}: ${res.status} ${res.statusText}`);
+    throw githubIssueError(owner, name, res.status, res.statusText);
   }
 
   const issues: GithubIssue[] = await res.json();
@@ -75,4 +83,44 @@ export async function fetchNewIssues(
   // The issues endpoint also returns PRs; exclude those, and stop once we
   // reach issues we've already seen (list is sorted newest-created-first).
   return issues.filter((issue) => !issue.pull_request && issue.number > sinceIssueNumber);
+}
+
+/** Fetches one issue exactly. Used to repair notifications created before
+ * GitHub's issue creation timestamp was stored. */
+export async function fetchIssue(
+  owner: string,
+  name: string,
+  issueNumber: number,
+  accessToken?: string
+): Promise<GithubIssue> {
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}`,
+    { headers: githubHeaders(accessToken), cache: "no-store" }
+  );
+
+  if (!res.ok) {
+    throw githubIssueError(owner, name, res.status, res.statusText);
+  }
+
+  return res.json();
+}
+
+/** Returns the current repository-wide issue/PR sequence number so a newly
+ * tracked repo starts watching from now instead of importing its history. */
+export async function fetchLatestIssueNumber(
+  owner: string,
+  name: string,
+  accessToken?: string
+): Promise<number> {
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${name}/issues?state=all&sort=created&direction=desc&per_page=1`,
+    { headers: githubHeaders(accessToken), cache: "no-store" }
+  );
+
+  if (!res.ok) {
+    throw githubIssueError(owner, name, res.status, res.statusText);
+  }
+
+  const issues: GithubIssue[] = await res.json();
+  return issues[0]?.number ?? 0;
 }

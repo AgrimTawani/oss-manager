@@ -46,6 +46,7 @@ model Notification {
   title             String
   authorLogin       String
   authorAssociation String // OWNER | MEMBER | COLLABORATOR | CONTRIBUTOR
+  issueCreatedAt    DateTime? // GitHub's creation time; null only until legacy rows are backfilled
   createdAt         DateTime @default(now())
   read              Boolean  @default(false)
 

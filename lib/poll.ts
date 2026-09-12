@@ -1,12 +1,68 @@
 import { prisma } from "./db";
 import { Prisma } from "@prisma/client";
-import { fetchNewIssues, isMaintainerOrContributor } from "./github";
+import { fetchIssue, fetchNewIssues, isMaintainerOrContributor } from "./github";
 import { sendIssuePush } from "./push";
+
+const TIMESTAMP_BACKFILL_LIMIT = 100;
+const TIMESTAMP_BACKFILL_CONCURRENCY = 10;
 
 export interface PollResult {
   reposChecked: number;
   notificationsCreated: number;
+  timestampsBackfilled: number;
   errors: { repo: string; message: string }[];
+}
+
+/** Repairs notifications imported before issueCreatedAt was introduced.
+ * Work is capped per run so a large account cannot monopolize the poll job. */
+async function backfillIssueCreatedAt(): Promise<number> {
+  const notifications = await prisma.notification.findMany({
+    where: { issueCreatedAt: null },
+    select: {
+      id: true,
+      issueNumber: true,
+      repo: {
+        select: {
+          owner: true,
+          name: true,
+          user: { select: { accessToken: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+    take: TIMESTAMP_BACKFILL_LIMIT,
+  });
+
+  let backfilled = 0;
+  for (let index = 0; index < notifications.length; index += TIMESTAMP_BACKFILL_CONCURRENCY) {
+    const batch = notifications.slice(index, index + TIMESTAMP_BACKFILL_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (notification) => {
+        try {
+          const issue = await fetchIssue(
+            notification.repo.owner,
+            notification.repo.name,
+            notification.issueNumber,
+            notification.repo.user.accessToken
+          );
+          const result = await prisma.notification.updateMany({
+            where: { id: notification.id, issueCreatedAt: null },
+            data: { issueCreatedAt: new Date(issue.created_at) },
+          });
+          return result.count;
+        } catch (error) {
+          console.error(
+            `Could not backfill issue timestamp for ${notification.repo.owner}/${notification.repo.name}#${notification.issueNumber}`,
+            error
+          );
+          return 0;
+        }
+      })
+    );
+    backfilled += results.reduce((total, count) => total + count, 0);
+  }
+
+  return backfilled;
 }
 
 /** Polls every tracked repo for every user and stores notifications for
@@ -42,6 +98,7 @@ export async function pollAllRepos(): Promise<PollResult> {
               title: issue.title,
               authorLogin: issue.user?.login ?? "unknown",
               authorAssociation: issue.author_association,
+              issueCreatedAt: new Date(issue.created_at),
               repoId: repo.id,
               userId: repo.userId,
             },
@@ -76,5 +133,6 @@ export async function pollAllRepos(): Promise<PollResult> {
     }
   }
 
-  return { reposChecked: repos.length, notificationsCreated, errors };
+  const timestampsBackfilled = await backfillIssueCreatedAt();
+  return { reposChecked: repos.length, notificationsCreated, timestampsBackfilled, errors };
 }

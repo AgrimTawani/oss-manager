@@ -11,7 +11,10 @@ export async function GET() {
   const notifications = await prisma.notification.findMany({
     where: { userId },
     include: { repo: true },
-    orderBy: { createdAt: "desc" },
+    orderBy: [
+      { issueCreatedAt: { sort: "desc", nulls: "last" } },
+      { createdAt: "desc" },
+    ],
     take: 100,
   });
   return NextResponse.json(notifications);

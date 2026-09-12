@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { parseRepoInput } from "@/lib/github";
+import { fetchLatestIssueNumber, parseRepoInput } from "@/lib/github";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -31,13 +32,37 @@ export async function POST(req: Request) {
   }
 
   try {
+    const existingRepo = await prisma.trackedRepo.findUnique({
+      where: { userId_owner_name: { userId, owner: parsed.owner, name: parsed.name } },
+      select: { id: true },
+    });
+    if (existingRepo) {
+      return NextResponse.json({ error: "Already tracking this repo" }, { status: 409 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { accessToken: true },
+    });
+    if (!user) {
+      return NextResponse.json({ error: "Account not found. Please sign in again." }, { status: 401 });
+    }
+
+    const lastSeenIssueNumber = await fetchLatestIssueNumber(
+      parsed.owner,
+      parsed.name,
+      user.accessToken
+    );
     const repo = await prisma.trackedRepo.create({
-      data: { owner: parsed.owner, name: parsed.name, userId },
+      data: { owner: parsed.owner, name: parsed.name, userId, lastSeenIssueNumber },
     });
     return NextResponse.json(repo, { status: 201 });
   } catch (err: unknown) {
-    if (err instanceof Error && err.message.includes("Unique constraint")) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return NextResponse.json({ error: "Already tracking this repo" }, { status: 409 });
+    }
+    if (err instanceof Error && err.message.includes("not found or private")) {
+      return NextResponse.json({ error: err.message }, { status: 404 });
     }
     return NextResponse.json({ error: "Could not add repo" }, { status: 500 });
   }
