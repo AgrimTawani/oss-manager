@@ -25,9 +25,21 @@ async function registerServiceWorker() {
   return navigator.serviceWorker.ready;
 }
 
-function friendlyPushError(caught: unknown) {
+async function isBraveBrowser() {
+  const brave = (navigator as Navigator & { brave?: { isBrave?: () => Promise<boolean> } }).brave;
+  try {
+    return Boolean(await brave?.isBrave?.());
+  } catch {
+    return false;
+  }
+}
+
+function friendlyPushError(caught: unknown, isBrave: boolean) {
   const message = caught instanceof Error ? caught.message : "";
   if (/push service error/i.test(message) || (caught instanceof DOMException && caught.name === "AbortError")) {
+    if (isBrave) {
+      return "Brave push messaging is off. Enable ‘Use Google services for push messaging’ in Settings → Privacy and security, then retry.";
+    }
     return "This browser's push service is unavailable. Open OSS Manager in Chrome, Edge, Firefox, or Safari.";
   }
   if (/permission/i.test(message)) {
@@ -107,7 +119,7 @@ export function PushNotificationControl() {
       await saveSubscription(subscription);
       setState("enabled");
     } catch (caught) {
-      setError(friendlyPushError(caught));
+      setError(friendlyPushError(caught, await isBraveBrowser()));
     } finally {
       setBusy(false);
     }

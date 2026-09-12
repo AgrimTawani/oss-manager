@@ -16,6 +16,7 @@ issue — never random drive-by issues from strangers.
   when OSS Manager is closed.
 - Filter by state, assignment status, linked pull requests, repository, or
   organization, and group the inbox by organization.
+- Collapse and reorder organization groups; the layout is remembered locally.
 - Use **Ready to pick up** for open issues with no assignee and no linked PR.
 
 ## Stack
