@@ -2,7 +2,7 @@ name: Poll tracked repos
 
 on:
   schedule:
-    - cron: "*/15 * * * *" # every 15 minutes
+    - cron: "7,22,37,52 * * * *" # every 15 minutes, away from peak queue times
   workflow_dispatch: {} # allows manual triggering from the Actions tab
 
 jobs:
@@ -11,5 +11,6 @@ jobs:
     steps:
       - name: Call poll endpoint
         run: |
-          curl -sf -X POST "${{ secrets.APP_URL }}/api/poll" \
+          curl --fail-with-body --show-error --location --max-time 240 \
+            -X POST "https://oss-manager-black.vercel.app/api/poll" \
             -H "Authorization: Bearer ${{ secrets.POLL_SECRET }}"

@@ -73,7 +73,6 @@ Already configured on the repo:
 
 | Secret | Value |
 |--------|-------|
-| `APP_URL` | `https://oss-manager-black.vercel.app` |
 | `POLL_SECRET` | Set (must match Vercel `POLL_SECRET`) |
 
 Settings: https://github.com/AgrimTawani/oss-manager/settings/secrets/actions
