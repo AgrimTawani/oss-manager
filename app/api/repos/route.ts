@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { fetchLatestIssueNumber, parseRepoInput } from "@/lib/github";
+import { fetchLatestIssueNumber, GithubApiError, parseRepoInput } from "@/lib/github";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -61,9 +61,32 @@ export async function POST(req: Request) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return NextResponse.json({ error: "Already tracking this repo" }, { status: 409 });
     }
-    if (err instanceof Error && err.message.includes("not found or private")) {
-      return NextResponse.json({ error: err.message }, { status: 404 });
+    if (err instanceof GithubApiError) {
+      console.error("[api/repos] GitHub request failed", {
+        owner: parsed.owner,
+        name: parsed.name,
+        status: err.status,
+        authenticationExpired: err.authenticationExpired,
+      });
+      if (err.authenticationExpired) {
+        return NextResponse.json({ error: err.message, reconnectGitHub: true }, { status: 401 });
+      }
+      if (err.status === 404) {
+        return NextResponse.json({ error: err.message }, { status: 404 });
+      }
+      if (err.status === 403 || err.status === 429) {
+        return NextResponse.json(
+          { error: "GitHub is temporarily rate limiting requests. Try again shortly." },
+          { status: 503 }
+        );
+      }
+      return NextResponse.json({ error: "GitHub could not verify that repository." }, { status: 502 });
     }
+    console.error("[api/repos] Could not add repository", {
+      owner: parsed.owner,
+      name: parsed.name,
+      error: err instanceof Error ? err.message : "Unknown error",
+    });
     return NextResponse.json({ error: "Could not add repo" }, { status: 500 });
   }
 }

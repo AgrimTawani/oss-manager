@@ -67,6 +67,7 @@ flowchart LR
 - **Local:** `DATABASE_URL` points at a Neon **dev** branch.
 - **Production:** Vercel env vars point at the Neon **main** branch.
 - **Polling:** Does not run inside the app process by default — GitHub Actions POSTs to `/api/poll` on a cron schedule. Alternatively, run `npm run poll` locally or on any machine with DB access.
+- **Expired GitHub tokens:** Public-repository reads retry without credentials. Private-repository reads return an explicit reconnect requirement so a stale OAuth token is never mistaken for an invalid repository.
 
 ## Application layers
 

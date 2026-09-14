@@ -54,11 +54,52 @@ function githubHeaders(accessToken?: string): Record<string, string> {
   return headers;
 }
 
+export class GithubApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly authenticationExpired = false
+  ) {
+    super(message);
+    this.name = "GithubApiError";
+  }
+}
+
 function githubIssueError(owner: string, name: string, status: number, statusText: string) {
   if (status === 404) {
-    return new Error(`Repo ${owner}/${name} not found or private without access`);
+    return new GithubApiError(
+      `Repo ${owner}/${name} not found or private without access`,
+      status
+    );
   }
-  return new Error(`GitHub API error for ${owner}/${name}: ${status} ${statusText}`);
+  return new GithubApiError(
+    `GitHub API error for ${owner}/${name}: ${status} ${statusText}`,
+    status
+  );
+}
+
+async function fetchFromGithub(url: string, accessToken?: string): Promise<Response> {
+  const response = await fetch(url, {
+    headers: githubHeaders(accessToken),
+    cache: "no-store",
+  });
+
+  if (response.status !== 401 || !accessToken) return response;
+
+  // OAuth sessions can outlive a revoked GitHub token. Public repositories
+  // remain readable without credentials, so keep them working while making
+  // private-repository failures explicitly request reconnection.
+  const publicResponse = await fetch(url, {
+    headers: githubHeaders(),
+    cache: "no-store",
+  });
+  if (publicResponse.ok) return publicResponse;
+
+  throw new GithubApiError(
+    "GitHub access expired. Sign out and sign in with GitHub again.",
+    401,
+    true
+  );
 }
 
 /**
@@ -71,9 +112,9 @@ export async function fetchNewIssues(
   sinceIssueNumber: number,
   accessToken?: string
 ): Promise<GithubIssue[]> {
-  const res = await fetch(
+  const res = await fetchFromGithub(
     `https://api.github.com/repos/${owner}/${name}/issues?state=open&sort=created&direction=desc&per_page=50`,
-    { headers: githubHeaders(accessToken), cache: "no-store" }
+    accessToken
   );
 
   if (!res.ok) {
@@ -95,9 +136,9 @@ export async function fetchIssue(
   issueNumber: number,
   accessToken?: string
 ): Promise<GithubIssue> {
-  const res = await fetch(
+  const res = await fetchFromGithub(
     `https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}`,
-    { headers: githubHeaders(accessToken), cache: "no-store" }
+    accessToken
   );
 
   if (!res.ok) {
@@ -128,9 +169,9 @@ export async function fetchLinkedPullRequestCount(
   const linkedPullRequests = new Set<string>();
 
   for (let page = 1; page <= 5; page++) {
-    const res = await fetch(
+    const res = await fetchFromGithub(
       `https://api.github.com/repos/${owner}/${name}/issues/${issueNumber}/timeline?per_page=100&page=${page}`,
-      { headers: githubHeaders(accessToken), cache: "no-store" }
+      accessToken
     );
 
     if (!res.ok) {
@@ -158,9 +199,9 @@ export async function fetchLatestIssueNumber(
   name: string,
   accessToken?: string
 ): Promise<number> {
-  const res = await fetch(
+  const res = await fetchFromGithub(
     `https://api.github.com/repos/${owner}/${name}/issues?state=all&sort=created&direction=desc&per_page=1`,
-    { headers: githubHeaders(accessToken), cache: "no-store" }
+    accessToken
   );
 
   if (!res.ok) {
