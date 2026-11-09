@@ -1,36 +1,23 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type {
-  AssignmentFilter,
-  IssueStateFilter,
-  PullRequestFilter,
-  SortOrder,
-} from "./types";
+import type { IssueStateFilter, SortOrder } from "./types";
 
 const selectClassName =
   "h-9 min-w-0 border border-border bg-panel px-2.5 text-xs text-secondary outline-none hover:bg-subtle focus:border-primary/30 focus:ring-2 focus:ring-primary/10";
 
 export function IssueFilters({
   issueState,
-  assignment,
-  pullRequest,
   sortOrder,
   groupByOrganization,
   onIssueStateChange,
-  onAssignmentChange,
-  onPullRequestChange,
   onSortOrderChange,
   onGroupByOrganizationChange,
 }: {
   issueState: IssueStateFilter;
-  assignment: AssignmentFilter;
-  pullRequest: PullRequestFilter;
   sortOrder: SortOrder;
   groupByOrganization: boolean;
   onIssueStateChange: (value: IssueStateFilter) => void;
-  onAssignmentChange: (value: AssignmentFilter) => void;
-  onPullRequestChange: (value: PullRequestFilter) => void;
   onSortOrderChange: (value: SortOrder) => void;
   onGroupByOrganizationChange: (value: boolean) => void;
 }) {
@@ -42,24 +29,6 @@ export function IssueFilters({
           <option value="any">Any state</option>
           <option value="open">Open</option>
           <option value="closed">Closed</option>
-        </select>
-      </label>
-
-      <label>
-        <span className="sr-only">Assignment status</span>
-        <select value={assignment} onChange={(event) => onAssignmentChange(event.target.value as AssignmentFilter)} className={selectClassName}>
-          <option value="any">Any assignment</option>
-          <option value="unassigned">Unassigned</option>
-          <option value="assigned">Assigned</option>
-        </select>
-      </label>
-
-      <label>
-        <span className="sr-only">Linked pull request status</span>
-        <select value={pullRequest} onChange={(event) => onPullRequestChange(event.target.value as PullRequestFilter)} className={selectClassName}>
-          <option value="any">Any PR status</option>
-          <option value="none">No linked PR</option>
-          <option value="linked">Has linked PR</option>
         </select>
       </label>
 

@@ -8,9 +8,33 @@ import {
 } from "./github";
 import { sendIssuePush } from "./push";
 
-const METADATA_REFRESH_LIMIT = 100;
+const METADATA_REFRESH_LIMIT = 300;
 const METADATA_REFRESH_CONCURRENCY = 10;
-const METADATA_MAX_AGE_MS = 60 * 60 * 1000;
+// Issues still on the dashboard are re-checked on every 15-minute poll, so one
+// that gets assigned or picks up a linked PR disappears by the next run.
+const AVAILABLE_METADATA_MAX_AGE_MS = 10 * 60 * 1000;
+// Closed or already-taken issues are re-checked less often, in case they are
+// reopened, unassigned, or their PR link is removed.
+const TAKEN_METADATA_MAX_AGE_MS = 60 * 60 * 1000;
+
+/** Open, unassigned, no linked PR — or not yet checked. */
+const AVAILABLE_ISSUE: Prisma.NotificationWhereInput = {
+  AND: [
+    { OR: [{ issueState: null }, { issueState: "OPEN" }] },
+    { OR: [{ assigneeCount: null }, { assigneeCount: 0 }] },
+    { OR: [{ linkedPullRequestCount: null }, { linkedPullRequestCount: 0 }] },
+  ],
+};
+
+function staleSince(maxAgeMs: number): Prisma.NotificationWhereInput {
+  return {
+    OR: [
+      { issueCreatedAt: null },
+      { metadataUpdatedAt: null },
+      { metadataUpdatedAt: { lt: new Date(Date.now() - maxAgeMs) } },
+    ],
+  };
+}
 
 export interface PollResult {
   reposChecked: number;
@@ -22,29 +46,39 @@ export interface PollResult {
 /** Keeps opportunity metadata current and repairs notifications created before
  * these fields existed. Work is capped so a large inbox cannot monopolize a run. */
 async function refreshIssueMetadata(): Promise<number> {
-  const staleBefore = new Date(Date.now() - METADATA_MAX_AGE_MS);
-  const notifications = await prisma.notification.findMany({
-    where: {
-      OR: [
-        { issueCreatedAt: null },
-        { metadataUpdatedAt: null },
-        { metadataUpdatedAt: { lt: staleBefore } },
-      ],
-    },
-    select: {
-      id: true,
-      issueNumber: true,
-      repo: {
-        select: {
-          owner: true,
-          name: true,
-          user: { select: { accessToken: true } },
-        },
+  const select = {
+    id: true,
+    issueNumber: true,
+    repo: {
+      select: {
+        owner: true,
+        name: true,
+        user: { select: { accessToken: true } },
       },
     },
-    orderBy: [{ metadataUpdatedAt: { sort: "asc", nulls: "first" } }, { createdAt: "asc" }],
+  } satisfies Prisma.NotificationSelect;
+  const orderBy: Prisma.NotificationOrderByWithRelationInput[] = [
+    { metadataUpdatedAt: { sort: "asc", nulls: "first" } },
+    { createdAt: "asc" },
+  ];
+
+  // Visible issues first: these are the ones that must vanish promptly.
+  const available = await prisma.notification.findMany({
+    where: { AND: [AVAILABLE_ISSUE, staleSince(AVAILABLE_METADATA_MAX_AGE_MS)] },
+    select,
+    orderBy,
     take: METADATA_REFRESH_LIMIT,
   });
+  const remaining = METADATA_REFRESH_LIMIT - available.length;
+  const taken = remaining > 0
+    ? await prisma.notification.findMany({
+        where: { AND: [{ NOT: AVAILABLE_ISSUE }, staleSince(TAKEN_METADATA_MAX_AGE_MS)] },
+        select,
+        orderBy,
+        take: remaining,
+      })
+    : [];
+  const notifications = [...available, ...taken];
 
   let refreshed = 0;
   for (let index = 0; index < notifications.length; index += METADATA_REFRESH_CONCURRENCY) {
@@ -151,8 +185,12 @@ export async function pollAllRepos(): Promise<PollResult> {
           }
         }
 
-        if (created) {
-          notificationsCreated++;
+        if (created) notificationsCreated++;
+
+        // Don't push issues that are already taken; the dashboard hides them too.
+        const alreadyTaken =
+          issue.assignees.length > 0 || (linkedPullRequestCount ?? 0) > 0;
+        if (created && !alreadyTaken) {
           await sendIssuePush(repo.userId, {
             title: issue.title,
             body: `${repo.owner}/${repo.name} · opened by @${issue.user?.login ?? "unknown"}`,

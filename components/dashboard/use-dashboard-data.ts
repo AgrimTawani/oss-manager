@@ -2,12 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
-  AssignmentFilter,
   FeedFilter,
   IssueStateFilter,
   NotificationItem,
   OrganizationSummary,
-  PullRequestFilter,
   SortOrder,
   TrackedRepo,
 } from "./types";
@@ -26,8 +24,6 @@ export function useDashboardData(enabled: boolean) {
   const [selectedOwner, setSelectedOwner] = useState<string | null>(null);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>("all");
   const [issueStateFilter, setIssueStateFilter] = useState<IssueStateFilter>("any");
-  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>("any");
-  const [pullRequestFilter, setPullRequestFilter] = useState<PullRequestFilter>("any");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [groupByOrganization, setGroupByOrganization] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -104,20 +100,14 @@ export function useDashboardData(enabled: boolean) {
     return [...summaries.values()].sort((a, b) => a.owner.localeCompare(b.owner));
   }, [notifications, repos]);
 
+  // The API already drops assigned issues and issues with linked PRs, so
+  // "ready" only has to rule out closed ones.
   const readyCount = useMemo(
-    () => notifications.filter((notification) =>
-      notification.issueState === "OPEN" &&
-      notification.assigneeCount === 0 &&
-      notification.linkedPullRequestCount === 0
-    ).length,
+    () => notifications.filter((notification) => notification.issueState === "OPEN").length,
     [notifications]
   );
 
-  const readyViewActive =
-    feedFilter === "all" &&
-    issueStateFilter === "open" &&
-    assignmentFilter === "unassigned" &&
-    pullRequestFilter === "none";
+  const readyViewActive = feedFilter === "all" && issueStateFilter === "open";
 
   const filteredNotifications = useMemo(() => {
     let list = notifications;
@@ -146,18 +136,6 @@ export function useDashboardData(enabled: boolean) {
       );
     }
 
-    if (assignmentFilter === "unassigned") {
-      list = list.filter((notification) => notification.assigneeCount === 0);
-    } else if (assignmentFilter === "assigned") {
-      list = list.filter((notification) => (notification.assigneeCount ?? 0) > 0);
-    }
-
-    if (pullRequestFilter === "none") {
-      list = list.filter((notification) => notification.linkedPullRequestCount === 0);
-    } else if (pullRequestFilter === "linked") {
-      list = list.filter((notification) => (notification.linkedPullRequestCount ?? 0) > 0);
-    }
-
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       list = list.filter((n) => {
@@ -184,8 +162,6 @@ export function useDashboardData(enabled: boolean) {
     selectedOwner,
     feedFilter,
     issueStateFilter,
-    assignmentFilter,
-    pullRequestFilter,
     searchQuery,
     sortOrder,
   ]);
@@ -280,8 +256,6 @@ export function useDashboardData(enabled: boolean) {
     setSelectedOwner(null);
     setFeedFilter("all");
     setIssueStateFilter("any");
-    setAssignmentFilter("any");
-    setPullRequestFilter("any");
     setSortOrder("newest");
     setGroupByOrganization(false);
     setSearchQuery("");
@@ -306,8 +280,6 @@ export function useDashboardData(enabled: boolean) {
     setSelectedOwner(null);
     setFeedFilter("unread");
     setIssueStateFilter("any");
-    setAssignmentFilter("any");
-    setPullRequestFilter("any");
   }
 
   function showReadyIssues() {
@@ -315,8 +287,6 @@ export function useDashboardData(enabled: boolean) {
     setSelectedOwner(null);
     setFeedFilter("all");
     setIssueStateFilter("open");
-    setAssignmentFilter("unassigned");
-    setPullRequestFilter("none");
   }
 
   return {
@@ -338,10 +308,6 @@ export function useDashboardData(enabled: boolean) {
     setFeedFilter,
     issueStateFilter,
     setIssueStateFilter,
-    assignmentFilter,
-    setAssignmentFilter,
-    pullRequestFilter,
-    setPullRequestFilter,
     sortOrder,
     setSortOrder,
     groupByOrganization,

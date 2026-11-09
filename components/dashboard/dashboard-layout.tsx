@@ -6,12 +6,10 @@ import { RepoSidebar } from "./repo-sidebar";
 import { NotificationFeed } from "./notification-feed";
 import { IssueFilters } from "./issue-filters";
 import type {
-  AssignmentFilter,
   FeedFilter,
   IssueStateFilter,
   NotificationItem,
   OrganizationSummary,
-  PullRequestFilter,
   SortOrder,
   TrackedRepo,
 } from "./types";
@@ -35,8 +33,6 @@ type DashboardLayoutProps = {
   readyCount: number;
   feedFilter: FeedFilter;
   issueStateFilter: IssueStateFilter;
-  assignmentFilter: AssignmentFilter;
-  pullRequestFilter: PullRequestFilter;
   sortOrder: SortOrder;
   groupByOrganization: boolean;
   readyViewActive: boolean;
@@ -48,8 +44,6 @@ type DashboardLayoutProps = {
   onRemoveRepo: (id: string) => Promise<boolean>;
   onMarkRead: (id: string) => void;
   onIssueStateFilterChange: (filter: IssueStateFilter) => void;
-  onAssignmentFilterChange: (filter: AssignmentFilter) => void;
-  onPullRequestFilterChange: (filter: PullRequestFilter) => void;
   onSortOrderChange: (sort: SortOrder) => void;
   onGroupByOrganizationChange: (grouped: boolean) => void;
   onShowAllIssues: () => void;
@@ -64,22 +58,19 @@ export function DashboardLayout({
   username, avatarUrl, repos, notifications, filteredNotifications, loading,
   refreshing, dataError, adding, formError, selectedRepoId, selectedOwner,
   organizations, unreadByRepoId, unreadCount, readyCount, feedFilter,
-  issueStateFilter, assignmentFilter, pullRequestFilter, sortOrder,
+  issueStateFilter, sortOrder,
   groupByOrganization, readyViewActive, feedTitle, searchQuery, onSelectRepo,
   onSelectOwner, onAddRepo, onRemoveRepo, onMarkRead,
-  onIssueStateFilterChange, onAssignmentFilterChange, onPullRequestFilterChange,
-  onSortOrderChange, onGroupByOrganizationChange, onShowAllIssues,
+  onIssueStateFilterChange, onSortOrderChange, onGroupByOrganizationChange, onShowAllIssues,
   onShowUnreadIssues, onShowReadyIssues, onSearchChange, onClearFilters, onRefresh,
 }: DashboardLayoutProps) {
   const [mobileReposOpen, setMobileReposOpen] = useState(false);
   const hasActiveFilters =
     feedFilter !== "all" || Boolean(selectedRepoId) || Boolean(selectedOwner) ||
-    issueStateFilter !== "any" || assignmentFilter !== "any" ||
-    pullRequestFilter !== "any" || searchQuery.trim().length > 0;
+    issueStateFilter !== "any" || searchQuery.trim().length > 0;
   const allIssuesViewActive =
     feedFilter === "all" && !selectedRepoId && !selectedOwner &&
-    issueStateFilter === "any" && assignmentFilter === "any" &&
-    pullRequestFilter === "any";
+    issueStateFilter === "any";
 
   const sidebarProps = {
     repos, loading, adding, formError, selectedRepoId, unreadByRepoId,
@@ -119,13 +110,9 @@ export function DashboardLayout({
 
           <IssueFilters
             issueState={issueStateFilter}
-            assignment={assignmentFilter}
-            pullRequest={pullRequestFilter}
             sortOrder={sortOrder}
             groupByOrganization={groupByOrganization}
             onIssueStateChange={onIssueStateFilterChange}
-            onAssignmentChange={onAssignmentFilterChange}
-            onPullRequestChange={onPullRequestFilterChange}
             onSortOrderChange={onSortOrderChange}
             onGroupByOrganizationChange={onGroupByOrganizationChange}
           />

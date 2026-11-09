@@ -47,8 +47,6 @@ export default function DashboardPage() {
       readyCount={data.readyCount}
       feedFilter={data.feedFilter}
       issueStateFilter={data.issueStateFilter}
-      assignmentFilter={data.assignmentFilter}
-      pullRequestFilter={data.pullRequestFilter}
       sortOrder={data.sortOrder}
       groupByOrganization={data.groupByOrganization}
       readyViewActive={data.readyViewActive}
@@ -60,8 +58,6 @@ export default function DashboardPage() {
       onRemoveRepo={data.removeRepo}
       onMarkRead={data.markRead}
       onIssueStateFilterChange={data.setIssueStateFilter}
-      onAssignmentFilterChange={data.setAssignmentFilter}
-      onPullRequestFilterChange={data.setPullRequestFilter}
       onSortOrderChange={data.setSortOrder}
       onGroupByOrganizationChange={data.setGroupByOrganization}
       onShowAllIssues={data.showAllIssues}

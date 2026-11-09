@@ -25,8 +25,6 @@ export interface NotificationItem {
 
 export type FeedFilter = "all" | "unread";
 export type IssueStateFilter = "any" | "open" | "closed";
-export type AssignmentFilter = "any" | "unassigned" | "assigned";
-export type PullRequestFilter = "any" | "none" | "linked";
 export type SortOrder = "newest" | "oldest";
 
 export interface OrganizationSummary {

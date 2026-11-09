@@ -158,8 +158,10 @@ type GithubTimelineEvent = {
   };
 };
 
-/** Counts unique pull requests that GitHub reports as cross-referencing an
- * issue. This is the same relationship surfaced in an issue's timeline. */
+/** Counts pull requests linked to an issue. Two timeline relationships count:
+ * - `cross-referenced` from a PR (e.g. "Fixes #12" in a PR body), deduplicated by URL;
+ * - `connected` / `disconnected` from the issue's Development sidebar, where a
+ *   PR was linked manually. REST does not say which PR, so we keep a net count. */
 export async function fetchLinkedPullRequestCount(
   owner: string,
   name: string,
@@ -167,6 +169,7 @@ export async function fetchLinkedPullRequestCount(
   accessToken?: string
 ): Promise<number> {
   const linkedPullRequests = new Set<string>();
+  let manuallyConnected = 0;
 
   for (let page = 1; page <= 5; page++) {
     const res = await fetchFromGithub(
@@ -180,6 +183,9 @@ export async function fetchLinkedPullRequestCount(
 
     const events: GithubTimelineEvent[] = await res.json();
     for (const event of events) {
+      if (event.event === "connected") manuallyConnected++;
+      else if (event.event === "disconnected") manuallyConnected--;
+
       const sourceIssue = event.event === "cross-referenced" ? event.source?.issue : undefined;
       if (sourceIssue?.pull_request) {
         linkedPullRequests.add(sourceIssue.html_url ?? `unknown:${page}:${linkedPullRequests.size}`);
@@ -189,7 +195,7 @@ export async function fetchLinkedPullRequestCount(
     if (events.length < 100) break;
   }
 
-  return linkedPullRequests.size;
+  return linkedPullRequests.size + Math.max(0, manuallyConnected);
 }
 
 /** Returns the current repository-wide issue/PR sequence number so a newly

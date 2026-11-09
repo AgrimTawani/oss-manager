@@ -223,7 +223,7 @@ sequenceDiagram
 ```
 
 **Filter logic** lives in `lib/github.ts` (`MAINTAINER_ASSOCIATIONS`). Issues from `NONE`, `FIRST_TIMER`, etc. are silently skipped.
-Opportunity metadata is refreshed hourly in capped batches so state, assignments, and linked pull-request filters stay current without exhausting GitHub API limits.
+Opportunity metadata is refreshed in capped batches. Issues still shown on the dashboard (open, unassigned, no linked PR) are re-checked on every poll, so one that gets an assignee or a linked PR disappears by the next run; closed or taken issues are re-checked hourly in case they are reopened or freed up. `/api/notifications` never returns assigned issues or issues with linked PRs.
 
 ### 4. Dashboard refresh
 

@@ -14,10 +14,12 @@ issue — never random drive-by issues from strangers.
   Everyone else's issues are silently ignored.
 - Enable browser alerts from the dashboard to receive those notifications even
   when OSS Manager is closed.
-- Filter by state, assignment status, linked pull requests, repository, or
-  organization, and group the inbox by organization.
+- Issues that are assigned or have a linked pull request are hidden — including
+  ones that pick up an assignee or PR after they first appear.
+- Filter by state, repository, or organization, and group the inbox by
+  organization.
 - Collapse and reorder organization groups; the layout is remembered locally.
-- Use **Ready to pick up** for open issues with no assignee and no linked PR.
+- Use **Ready to pick up** for the open issues in that list.
 
 ## Stack
 

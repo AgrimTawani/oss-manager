@@ -181,7 +181,7 @@ export function NotificationFeed({
         ) : null}
       </div> : issueList}
 
-      <p className="mt-4 text-xs leading-5 text-muted">Issues are checked every 15 minutes. Only owners, members, collaborators, and past contributors appear here.</p>
+      <p className="mt-4 text-xs leading-5 text-muted">Issues are checked every 15 minutes. Only owners, members, collaborators, and past contributors appear here. Issues that get an assignee or a linked PR drop off automatically.</p>
     </section>
   );
 }
