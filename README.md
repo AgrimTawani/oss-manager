@@ -14,8 +14,8 @@ issue — never random drive-by issues from strangers.
   Everyone else's issues are silently ignored.
 - Enable browser alerts from the dashboard to receive those notifications even
   when OSS Manager is closed.
-- Every issue shown is ready to pick up: open, unassigned, and with no linked
-  pull request. Issues drop off as soon as they are closed, assigned, or get a
+- Every issue shown is ready to pick up: opened in the last 2 weeks, still
+  open, unassigned, and with no linked pull request. Issues drop off as soon as they are closed, assigned, or get a
   linked PR, even after they first appear.
 - Filter by repository or organization, and group the inbox by organization.
 - Collapse and reorder organization groups; the layout is remembered locally.

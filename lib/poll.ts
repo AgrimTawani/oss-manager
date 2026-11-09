@@ -8,6 +8,7 @@ import {
   isMaintainerOrContributor,
 } from "./github";
 import { sendIssuePush } from "./push";
+import { recentIssueWhere } from "./ready-issues";
 
 const METADATA_REFRESH_LIMIT = 300;
 const METADATA_REFRESH_CONCURRENCY = 10;
@@ -17,9 +18,10 @@ const REPO_POLL_CONCURRENCY = 5;
 const AVAILABLE_METADATA_MAX_AGE_MS = 10 * 60 * 1000;
 // While someone has the dashboard open it asks for a refresh of their own
 // inbox. GitHub's scheduler often delays the poll workflow by hours, so this is
-// what actually keeps an open dashboard current. Kept small so it returns fast.
+// what actually keeps an open dashboard current. It checks the newest issues
+// first (what is on screen) and reports when more are waiting.
 const USER_REFRESH_MAX_AGE_MS = 5 * 60 * 1000;
-const USER_METADATA_REFRESH_LIMIT = 60;
+const USER_METADATA_REFRESH_LIMIT = 100;
 // Closed or already-taken issues are re-checked less often, in case they are
 // reopened, unassigned, or their PR link is removed.
 const TAKEN_METADATA_MAX_AGE_MS = 60 * 60 * 1000;
@@ -50,6 +52,8 @@ export interface PollResult {
   errors: { repo: string; message: string }[];
   /** GitHub rejected a stored token; the owner must sign in again. */
   githubAccessExpired: boolean;
+  /** The metadata refresh hit its cap; more stale issues are waiting. */
+  hasMore: boolean;
 }
 
 type RepoWithUser = Prisma.TrackedRepoGetPayload<{ include: { user: true } }>;
@@ -73,12 +77,15 @@ async function refreshIssueMetadata({
   limit,
   availableMaxAgeMs,
   includeTaken,
+  newestFirst = false,
 }: {
   userId?: string;
   limit: number;
   availableMaxAgeMs: number;
   includeTaken: boolean;
-}): Promise<{ refreshed: number; githubAccessExpired: boolean }> {
+  /** Check the most recently opened issues first, i.e. the ones on screen. */
+  newestFirst?: boolean;
+}): Promise<{ refreshed: number; githubAccessExpired: boolean; hasMore: boolean }> {
   const scope: Prisma.NotificationWhereInput = userId ? { userId } : {};
   const select = {
     id: true,
@@ -91,14 +98,17 @@ async function refreshIssueMetadata({
       },
     },
   } satisfies Prisma.NotificationSelect;
-  const orderBy: Prisma.NotificationOrderByWithRelationInput[] = [
-    { metadataUpdatedAt: { sort: "asc", nulls: "first" } },
-    { createdAt: "asc" },
-  ];
+  const orderBy: Prisma.NotificationOrderByWithRelationInput[] = newestFirst
+    ? [{ issueCreatedAt: { sort: "desc", nulls: "first" } }, { createdAt: "desc" }]
+    : [{ metadataUpdatedAt: { sort: "asc", nulls: "first" } }, { createdAt: "asc" }];
+
+  // Issues older than the dashboard's two-week window are never shown, so
+  // they are not worth GitHub API calls.
+  const recent = recentIssueWhere();
 
   // Visible issues first: these are the ones that must vanish promptly.
   const available = await prisma.notification.findMany({
-    where: { AND: [scope, AVAILABLE_ISSUE, staleSince(availableMaxAgeMs)] },
+    where: { AND: [scope, recent, AVAILABLE_ISSUE, staleSince(availableMaxAgeMs)] },
     select,
     orderBy,
     take: limit,
@@ -106,7 +116,9 @@ async function refreshIssueMetadata({
   const remaining = limit - available.length;
   const taken = includeTaken && remaining > 0
     ? await prisma.notification.findMany({
-        where: { AND: [scope, { NOT: AVAILABLE_ISSUE }, staleSince(TAKEN_METADATA_MAX_AGE_MS)] },
+        where: {
+          AND: [scope, recent, { NOT: AVAILABLE_ISSUE }, staleSince(TAKEN_METADATA_MAX_AGE_MS)],
+        },
         select,
         orderBy,
         take: remaining,
@@ -148,6 +160,8 @@ async function refreshIssueMetadata({
   return {
     refreshed: results.reduce<number>((total, count) => total + count, 0),
     githubAccessExpired,
+    // Hitting the cap means more stale issues are probably waiting.
+    hasMore: available.length === limit,
   };
 }
 
@@ -258,6 +272,7 @@ export async function pollAllRepos(): Promise<PollResult> {
     metadataRefreshed: metadata.refreshed,
     errors: polled.errors,
     githubAccessExpired: polled.githubAccessExpired || metadata.githubAccessExpired,
+    hasMore: metadata.hasMore,
   };
 }
 
@@ -279,6 +294,7 @@ export async function refreshUserInbox(userId: string): Promise<PollResult> {
     limit: USER_METADATA_REFRESH_LIMIT,
     availableMaxAgeMs: USER_REFRESH_MAX_AGE_MS,
     includeTaken: false,
+    newestFirst: true,
   });
   return {
     reposChecked: repos.length,
@@ -286,5 +302,6 @@ export async function refreshUserInbox(userId: string): Promise<PollResult> {
     metadataRefreshed: metadata.refreshed,
     errors: polled.errors,
     githubAccessExpired: polled.githubAccessExpired || metadata.githubAccessExpired,
+    hasMore: metadata.hasMore,
   };
 }

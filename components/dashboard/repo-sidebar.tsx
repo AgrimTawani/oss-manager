@@ -69,7 +69,7 @@ export function RepoSidebar({
             onClick={onShowAllIssues}
             className={cn("flex w-full items-center justify-between px-3 py-2 text-sm", allIssuesViewActive ? "bg-selected text-primary" : "text-secondary hover:bg-subtle")}
           >
-            <span>All issues</span><span className="text-xs text-muted">{repos.length ? "Latest 100" : ""}</span>
+            <span>All issues</span><span className="text-xs text-muted">{repos.length ? "Last 2 weeks" : ""}</span>
           </button>
           <button
             type="button"

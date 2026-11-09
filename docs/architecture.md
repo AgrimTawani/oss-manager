@@ -223,7 +223,7 @@ sequenceDiagram
 ```
 
 **Filter logic** lives in `lib/github.ts` (`MAINTAINER_ASSOCIATIONS`). Issues from `NONE`, `FIRST_TIMER`, etc. are silently skipped.
-Opportunity metadata is refreshed in capped batches. Issues still shown on the dashboard (open, unassigned, no linked PR) are re-checked on every poll, so one that gets an assignee or a linked PR disappears by the next run; closed or taken issues are re-checked hourly in case they are reopened or freed up. `/api/notifications` only returns issues confirmed open, unassigned, and without a linked PR; issues not yet checked stay hidden until a refresh confirms them.
+Opportunity metadata is refreshed in capped batches. Issues still shown on the dashboard (open, unassigned, no linked PR) are re-checked on every poll, so one that gets an assignee or a linked PR disappears by the next run; closed or taken issues are re-checked hourly in case they are reopened or freed up. `/api/notifications` only returns issues opened in the last 2 weeks and confirmed open, unassigned, and without a linked PR (`lib/ready-issues.ts`); issues not yet checked stay hidden until a refresh confirms them. Issues older than 2 weeks are never re-checked, which keeps GitHub API usage bounded.
 
 GitHub's scheduler often delays the poll workflow by hours, so an open dashboard also calls `POST /api/notifications/refresh` on load, every 5 minutes while the tab is visible, when the tab regains focus, and on **Refresh**. That re-checks the signed-in user's repos and visible issues that have not been checked in the last 5 minutes (at most 60 issues per call), and reports when the stored GitHub token has expired so the dashboard can offer to reconnect.
 

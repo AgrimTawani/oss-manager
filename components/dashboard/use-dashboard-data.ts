@@ -13,6 +13,9 @@ import { repoKey } from "./types";
 // How often an open, visible dashboard asks the server to re-check GitHub.
 // The server skips anything checked more recently, so this is cheap.
 const INBOX_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+// After a long gap (e.g. an expired token) there can be a backlog; keep asking
+// right away while the server says more is waiting, up to this many rounds.
+const MAX_SYNC_ROUNDS = 5;
 
 export function useDashboardData(enabled: boolean) {
   const [repos, setRepos] = useState<TrackedRepo[]>([]);
@@ -67,19 +70,24 @@ export function useDashboardData(enabled: boolean) {
     if (syncInFlight.current) return syncInFlight.current;
     syncInFlight.current = (async () => {
       try {
-        const res = await fetch("/api/notifications/refresh", { method: "POST" });
-        if (!res.ok) return false;
-        const result: {
-          notificationsCreated: number;
-          metadataRefreshed: number;
-          githubAccessExpired: boolean;
-        } = await res.json();
-        setGithubAccessExpired(result.githubAccessExpired);
-        if (result.notificationsCreated > 0 || result.metadataRefreshed > 0) {
-          await loadData(true);
-          return true;
+        let reloaded = false;
+        for (let round = 0; round < MAX_SYNC_ROUNDS; round++) {
+          const res = await fetch("/api/notifications/refresh", { method: "POST" });
+          if (!res.ok) break;
+          const result: {
+            notificationsCreated: number;
+            metadataRefreshed: number;
+            githubAccessExpired: boolean;
+            hasMore: boolean;
+          } = await res.json();
+          setGithubAccessExpired(result.githubAccessExpired);
+          if (result.notificationsCreated > 0 || result.metadataRefreshed > 0) {
+            await loadData(true);
+            reloaded = true;
+          }
+          if (!result.hasMore || result.githubAccessExpired) break;
         }
-        return false;
+        return reloaded;
       } catch {
         // The scheduled poll still runs; a failed sync just waits for the next one.
         return false;

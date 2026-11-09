@@ -18,5 +18,6 @@ export async function POST() {
     notificationsCreated: result.notificationsCreated,
     metadataRefreshed: result.metadataRefreshed,
     githubAccessExpired: result.githubAccessExpired,
+    hasMore: result.hasMore,
   });
 }

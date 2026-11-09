@@ -181,7 +181,7 @@ export function NotificationFeed({
         ) : null}
       </div> : issueList}
 
-      <p className="mt-4 text-xs leading-5 text-muted">Only open, unassigned issues with no linked PR, opened by owners, members, collaborators, or past contributors, appear here. They are re-checked every few minutes while this page is open.</p>
+      <p className="mt-4 text-xs leading-5 text-muted">Only open, unassigned issues with no linked PR, opened in the last 2 weeks by owners, members, collaborators, or past contributors, appear here. They are re-checked every few minutes while this page is open.</p>
     </section>
   );
 }
