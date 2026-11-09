@@ -36,6 +36,7 @@ export default function DashboardPage() {
       filteredNotifications={data.filteredNotifications}
       loading={data.loading}
       refreshing={data.refreshing}
+      githubAccessExpired={data.githubAccessExpired}
       dataError={data.dataError}
       adding={data.adding}
       formError={data.formError}
@@ -44,12 +45,9 @@ export default function DashboardPage() {
       organizations={data.organizations}
       unreadByRepoId={data.unreadByRepoId}
       unreadCount={data.unreadCount}
-      readyCount={data.readyCount}
       feedFilter={data.feedFilter}
-      issueStateFilter={data.issueStateFilter}
       sortOrder={data.sortOrder}
       groupByOrganization={data.groupByOrganization}
-      readyViewActive={data.readyViewActive}
       feedTitle={data.feedTitle}
       searchQuery={data.searchQuery}
       onSelectRepo={data.selectRepo}
@@ -57,12 +55,10 @@ export default function DashboardPage() {
       onAddRepo={data.addRepo}
       onRemoveRepo={data.removeRepo}
       onMarkRead={data.markRead}
-      onIssueStateFilterChange={data.setIssueStateFilter}
       onSortOrderChange={data.setSortOrder}
       onGroupByOrganizationChange={data.setGroupByOrganization}
       onShowAllIssues={data.showAllIssues}
       onShowUnreadIssues={data.showUnreadIssues}
-      onShowReadyIssues={data.showReadyIssues}
       onSearchChange={data.setSearchQuery}
       onClearFilters={data.clearFilters}
       onRefresh={data.refresh}

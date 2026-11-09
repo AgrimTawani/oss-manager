@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { CommandBar } from "./command-bar";
 import { RepoSidebar } from "./repo-sidebar";
 import { NotificationFeed } from "./notification-feed";
 import { IssueFilters } from "./issue-filters";
 import type {
   FeedFilter,
-  IssueStateFilter,
   NotificationItem,
   OrganizationSummary,
   SortOrder,
@@ -22,6 +22,7 @@ type DashboardLayoutProps = {
   filteredNotifications: NotificationItem[];
   loading: boolean;
   refreshing: boolean;
+  githubAccessExpired: boolean;
   dataError: string | null;
   adding: boolean;
   formError: string | null;
@@ -30,12 +31,9 @@ type DashboardLayoutProps = {
   organizations: OrganizationSummary[];
   unreadByRepoId: Map<string, number>;
   unreadCount: number;
-  readyCount: number;
   feedFilter: FeedFilter;
-  issueStateFilter: IssueStateFilter;
   sortOrder: SortOrder;
   groupByOrganization: boolean;
-  readyViewActive: boolean;
   feedTitle: string;
   searchQuery: string;
   onSelectRepo: (id: string | null) => void;
@@ -43,12 +41,10 @@ type DashboardLayoutProps = {
   onAddRepo: (input: string) => Promise<boolean>;
   onRemoveRepo: (id: string) => Promise<boolean>;
   onMarkRead: (id: string) => void;
-  onIssueStateFilterChange: (filter: IssueStateFilter) => void;
   onSortOrderChange: (sort: SortOrder) => void;
   onGroupByOrganizationChange: (grouped: boolean) => void;
   onShowAllIssues: () => void;
   onShowUnreadIssues: () => void;
-  onShowReadyIssues: () => void;
   onSearchChange: (query: string) => void;
   onClearFilters: () => void;
   onRefresh: () => void;
@@ -56,28 +52,24 @@ type DashboardLayoutProps = {
 
 export function DashboardLayout({
   username, avatarUrl, repos, notifications, filteredNotifications, loading,
-  refreshing, dataError, adding, formError, selectedRepoId, selectedOwner,
-  organizations, unreadByRepoId, unreadCount, readyCount, feedFilter,
-  issueStateFilter, sortOrder,
-  groupByOrganization, readyViewActive, feedTitle, searchQuery, onSelectRepo,
+  refreshing, githubAccessExpired, dataError, adding, formError, selectedRepoId, selectedOwner,
+  organizations, unreadByRepoId, unreadCount, feedFilter, sortOrder,
+  groupByOrganization, feedTitle, searchQuery, onSelectRepo,
   onSelectOwner, onAddRepo, onRemoveRepo, onMarkRead,
-  onIssueStateFilterChange, onSortOrderChange, onGroupByOrganizationChange, onShowAllIssues,
-  onShowUnreadIssues, onShowReadyIssues, onSearchChange, onClearFilters, onRefresh,
+  onSortOrderChange, onGroupByOrganizationChange, onShowAllIssues,
+  onShowUnreadIssues, onSearchChange, onClearFilters, onRefresh,
 }: DashboardLayoutProps) {
   const [mobileReposOpen, setMobileReposOpen] = useState(false);
   const hasActiveFilters =
-    feedFilter !== "all" || Boolean(selectedRepoId) || Boolean(selectedOwner) ||
-    issueStateFilter !== "any" || searchQuery.trim().length > 0;
+    feedFilter !== "all" || Boolean(selectedRepoId) || Boolean(selectedOwner) || searchQuery.trim().length > 0;
   const allIssuesViewActive =
-    feedFilter === "all" && !selectedRepoId && !selectedOwner &&
-    issueStateFilter === "any";
+    feedFilter === "all" && !selectedRepoId && !selectedOwner;
 
   const sidebarProps = {
     repos, loading, adding, formError, selectedRepoId, unreadByRepoId,
-    unreadCount, readyCount, feedFilter, readyViewActive, selectedOwner,
+    unreadCount, feedFilter, selectedOwner,
     organizations, allIssuesViewActive, username, avatarUrl, onAddRepo,
     onRemoveRepo, onSelectOwner, onShowAllIssues, onShowUnreadIssues,
-    onShowReadyIssues,
   };
 
   return (
@@ -99,6 +91,19 @@ export function DashboardLayout({
         />
 
         <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 lg:px-10 lg:py-8">
+          {githubAccessExpired ? (
+            <div className="mb-5 flex items-center justify-between gap-4 border border-amber-400/25 bg-amber-400/5 px-4 py-3 text-sm text-amber-300">
+              <span>GitHub access expired, so issue status can&apos;t be kept up to date. Sign in again to reconnect.</span>
+              <button
+                type="button"
+                onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+                className="shrink-0 font-medium underline underline-offset-4"
+              >
+                Reconnect GitHub
+              </button>
+            </div>
+          ) : null}
+
           {dataError ? (
             <div className="mb-5 flex items-center justify-between gap-4 border border-danger/25 bg-danger/5 px-4 py-3 text-sm text-danger">
               <span>{dataError}</span>
@@ -109,10 +114,8 @@ export function DashboardLayout({
           ) : null}
 
           <IssueFilters
-            issueState={issueStateFilter}
             sortOrder={sortOrder}
             groupByOrganization={groupByOrganization}
-            onIssueStateChange={onIssueStateFilterChange}
             onSortOrderChange={onSortOrderChange}
             onGroupByOrganizationChange={onGroupByOrganizationChange}
           />
@@ -145,7 +148,6 @@ export function DashboardLayout({
             onSelectOwner={(owner) => { onSelectOwner(owner); setMobileReposOpen(false); }}
             onShowAllIssues={() => { onShowAllIssues(); setMobileReposOpen(false); }}
             onShowUnreadIssues={() => { onShowUnreadIssues(); setMobileReposOpen(false); }}
-            onShowReadyIssues={() => { onShowReadyIssues(); setMobileReposOpen(false); }}
             onClose={() => setMobileReposOpen(false)}
             className="absolute inset-y-0 left-0 flex w-[min(88vw,320px)]"
           />

@@ -11,9 +11,9 @@ import type { FeedFilter, OrganizationSummary, TrackedRepo } from "./types";
 
 export function RepoSidebar({
   repos, loading, adding, formError, selectedRepoId, unreadByRepoId, unreadCount,
-  readyCount, feedFilter, readyViewActive, selectedOwner, organizations,
+  feedFilter, selectedOwner, organizations,
   allIssuesViewActive, username, avatarUrl, onSelectRepo, onSelectOwner,
-  onShowAllIssues, onShowUnreadIssues, onShowReadyIssues, onAddRepo,
+  onShowAllIssues, onShowUnreadIssues, onAddRepo,
   onRemoveRepo, onClose, className,
 }: {
   repos: TrackedRepo[];
@@ -23,9 +23,7 @@ export function RepoSidebar({
   selectedRepoId: string | null;
   unreadByRepoId: Map<string, number>;
   unreadCount: number;
-  readyCount: number;
   feedFilter: FeedFilter;
-  readyViewActive: boolean;
   allIssuesViewActive: boolean;
   selectedOwner: string | null;
   organizations: OrganizationSummary[];
@@ -35,7 +33,6 @@ export function RepoSidebar({
   onSelectOwner: (owner: string | null) => void;
   onShowAllIssues: () => void;
   onShowUnreadIssues: () => void;
-  onShowReadyIssues: () => void;
   onAddRepo: (input: string) => Promise<boolean>;
   onRemoveRepo: (id: string) => Promise<boolean>;
   onClose?: () => void;
@@ -80,14 +77,6 @@ export function RepoSidebar({
             className={cn("flex w-full items-center justify-between px-3 py-2 text-sm", !selectedRepoId && feedFilter === "unread" ? "bg-selected text-primary" : "text-secondary hover:bg-subtle")}
           >
             <span>Unread</span><span className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[10px] font-semibold text-canvas">{unreadCount}</span>
-          </button>
-          <button
-            type="button"
-            onClick={onShowReadyIssues}
-            className={cn("flex w-full items-center justify-between px-3 py-2 text-sm", readyViewActive && !selectedRepoId && !selectedOwner ? "bg-selected text-primary" : "text-secondary hover:bg-subtle")}
-          >
-            <span>Ready to pick up</span>
-            <span className="text-xs text-muted">{readyCount}</span>
           </button>
         </nav>
 

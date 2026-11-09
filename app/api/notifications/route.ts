@@ -9,17 +9,15 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   const notifications = await prisma.notification.findMany({
-    // Issues someone is already working on (assigned, or with a linked PR) are
-    // never shown. Filtering here, before `take`, keeps the newest 100
-    // *available* issues instead of 100 issues that are then filtered down.
-    // Null means "not checked yet" (e.g. GitHub was briefly unreachable); those
-    // stay visible until the next metadata refresh fills them in.
+    // Only issues confirmed ready to pick up: open, no assignee, no linked PR.
+    // Anything not yet checked (null) stays hidden until the next refresh
+    // confirms it. Filtering here, before `take`, keeps the newest 100 ready
+    // issues instead of 100 issues that are then filtered down.
     where: {
       userId,
-      AND: [
-        { OR: [{ assigneeCount: null }, { assigneeCount: 0 }] },
-        { OR: [{ linkedPullRequestCount: null }, { linkedPullRequestCount: 0 }] },
-      ],
+      issueState: "OPEN",
+      assigneeCount: 0,
+      linkedPullRequestCount: 0,
     },
     include: { repo: true },
     orderBy: [

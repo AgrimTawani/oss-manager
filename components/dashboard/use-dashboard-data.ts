@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   FeedFilter,
-  IssueStateFilter,
   NotificationItem,
   OrganizationSummary,
   SortOrder,
   TrackedRepo,
 } from "./types";
 import { repoKey } from "./types";
+
+// How often an open, visible dashboard asks the server to re-check GitHub.
+// The server skips anything checked more recently, so this is cheap.
+const INBOX_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 export function useDashboardData(enabled: boolean) {
   const [repos, setRepos] = useState<TrackedRepo[]>([]);
@@ -19,11 +22,12 @@ export function useDashboardData(enabled: boolean) {
   const [dataError, setDataError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [githubAccessExpired, setGithubAccessExpired] = useState(false);
+  const syncInFlight = useRef<Promise<boolean> | null>(null);
 
   const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
   const [selectedOwner, setSelectedOwner] = useState<string | null>(null);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>("all");
-  const [issueStateFilter, setIssueStateFilter] = useState<IssueStateFilter>("any");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [groupByOrganization, setGroupByOrganization] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,12 +60,56 @@ export function useDashboardData(enabled: boolean) {
     }
   }, []);
 
+  /** Asks the server to re-check GitHub for this user's repos and visible
+   * issues, then reloads if anything changed. Resolves true when it reloaded.
+   * Overlapping calls share one request. */
+  const syncInbox = useCallback(() => {
+    if (syncInFlight.current) return syncInFlight.current;
+    syncInFlight.current = (async () => {
+      try {
+        const res = await fetch("/api/notifications/refresh", { method: "POST" });
+        if (!res.ok) return false;
+        const result: {
+          notificationsCreated: number;
+          metadataRefreshed: number;
+          githubAccessExpired: boolean;
+        } = await res.json();
+        setGithubAccessExpired(result.githubAccessExpired);
+        if (result.notificationsCreated > 0 || result.metadataRefreshed > 0) {
+          await loadData(true);
+          return true;
+        }
+        return false;
+      } catch {
+        // The scheduled poll still runs; a failed sync just waits for the next one.
+        return false;
+      } finally {
+        syncInFlight.current = null;
+      }
+    })();
+    return syncInFlight.current;
+  }, [loadData]);
+
   useEffect(() => {
     if (!enabled) return;
     loadData();
     const interval = setInterval(() => loadData(true), 30000);
     return () => clearInterval(interval);
   }, [enabled, loadData]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const syncIfVisible = () => {
+      if (document.visibilityState === "visible") void syncInbox();
+    };
+    syncIfVisible();
+    const interval = setInterval(syncIfVisible, INBOX_SYNC_INTERVAL_MS);
+    document.addEventListener("visibilitychange", syncIfVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", syncIfVisible);
+    };
+  }, [enabled, syncInbox]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -100,15 +148,6 @@ export function useDashboardData(enabled: boolean) {
     return [...summaries.values()].sort((a, b) => a.owner.localeCompare(b.owner));
   }, [notifications, repos]);
 
-  // The API already drops assigned issues and issues with linked PRs, so
-  // "ready" only has to rule out closed ones.
-  const readyCount = useMemo(
-    () => notifications.filter((notification) => notification.issueState === "OPEN").length,
-    [notifications]
-  );
-
-  const readyViewActive = feedFilter === "all" && issueStateFilter === "open";
-
   const filteredNotifications = useMemo(() => {
     let list = notifications;
 
@@ -127,13 +166,6 @@ export function useDashboardData(enabled: boolean) {
 
     if (feedFilter === "unread") {
       list = list.filter((n) => !n.read);
-    }
-
-
-    if (issueStateFilter !== "any") {
-      list = list.filter((notification) =>
-        notification.issueState === issueStateFilter.toUpperCase()
-      );
     }
 
     const q = searchQuery.trim().toLowerCase();
@@ -161,7 +193,6 @@ export function useDashboardData(enabled: boolean) {
     selectedRepoId,
     selectedOwner,
     feedFilter,
-    issueStateFilter,
     searchQuery,
     sortOrder,
   ]);
@@ -172,14 +203,13 @@ export function useDashboardData(enabled: boolean) {
       ? `${selectedRepo.owner}/${selectedRepo.name}`
       : selectedOwner ?? null;
 
-    if (readyViewActive) return scope ? `Ready to pick up · ${scope}` : "Ready to pick up";
     if (feedFilter === "unread") return scope ? `Unread · ${scope}` : "Unread issues";
     if (selectedRepoId) {
       return selectedRepo ? `${selectedRepo.owner}/${selectedRepo.name}` : "Filtered issues";
     }
     if (selectedOwner) return selectedOwner;
     return "All issues";
-  }, [feedFilter, readyViewActive, selectedOwner, selectedRepoId, repos]);
+  }, [feedFilter, selectedOwner, selectedRepoId, repos]);
 
   async function addRepo(input: string) {
     setFormError(null);
@@ -255,7 +285,6 @@ export function useDashboardData(enabled: boolean) {
     setSelectedRepoId(null);
     setSelectedOwner(null);
     setFeedFilter("all");
-    setIssueStateFilter("any");
     setSortOrder("newest");
     setGroupByOrganization(false);
     setSearchQuery("");
@@ -279,14 +308,6 @@ export function useDashboardData(enabled: boolean) {
     setSelectedRepoId(null);
     setSelectedOwner(null);
     setFeedFilter("unread");
-    setIssueStateFilter("any");
-  }
-
-  function showReadyIssues() {
-    setSelectedRepoId(null);
-    setSelectedOwner(null);
-    setFeedFilter("all");
-    setIssueStateFilter("open");
   }
 
   return {
@@ -303,16 +324,12 @@ export function useDashboardData(enabled: boolean) {
     selectedOwner,
     selectOwner,
     organizations,
-    readyCount,
     feedFilter,
     setFeedFilter,
-    issueStateFilter,
-    setIssueStateFilter,
     sortOrder,
     setSortOrder,
     groupByOrganization,
     setGroupByOrganization,
-    readyViewActive,
     searchQuery,
     setSearchQuery,
     unreadCount,
@@ -325,7 +342,10 @@ export function useDashboardData(enabled: boolean) {
     clearFilters,
     showAllIssues,
     showUnreadIssues,
-    showReadyIssues,
-    refresh: () => loadData(true),
+    githubAccessExpired,
+    refresh: async () => {
+      setRefreshing(true);
+      if (!(await syncInbox())) await loadData(true);
+    },
   };
 }

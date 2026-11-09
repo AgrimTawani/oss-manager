@@ -1,38 +1,25 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { IssueStateFilter, SortOrder } from "./types";
+import type { SortOrder } from "./types";
 
 const selectClassName =
   "h-9 min-w-0 border border-border bg-panel px-2.5 text-xs text-secondary outline-none hover:bg-subtle focus:border-primary/30 focus:ring-2 focus:ring-primary/10";
 
 export function IssueFilters({
-  issueState,
   sortOrder,
   groupByOrganization,
-  onIssueStateChange,
   onSortOrderChange,
   onGroupByOrganizationChange,
 }: {
-  issueState: IssueStateFilter;
   sortOrder: SortOrder;
   groupByOrganization: boolean;
-  onIssueStateChange: (value: IssueStateFilter) => void;
   onSortOrderChange: (value: SortOrder) => void;
   onGroupByOrganizationChange: (value: boolean) => void;
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2" aria-label="Issue filters and sorting">
-      <label>
-        <span className="sr-only">Issue state</span>
-        <select value={issueState} onChange={(event) => onIssueStateChange(event.target.value as IssueStateFilter)} className={selectClassName}>
-          <option value="any">Any state</option>
-          <option value="open">Open</option>
-          <option value="closed">Closed</option>
-        </select>
-      </label>
-
-      <label className="sm:ml-auto">
+      <label className="ml-auto">
         <span className="sr-only">Sort issues</span>
         <select value={sortOrder} onChange={(event) => onSortOrderChange(event.target.value as SortOrder)} className={selectClassName}>
           <option value="newest">Newest first</option>
